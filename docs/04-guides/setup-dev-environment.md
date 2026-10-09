@@ -15,6 +15,26 @@
 
 **Windows:** Claude Code يعمل مع Git Bash، وسكربتات `scripts/*.sh` تحتاج bash. للخادم يُنصح بـ WSL2 مع Docker Desktop. تأكد أن الأمر `php` متاح في الطرفية التي يعمل فيها Claude، لأن الـ hooks تستدعيه.
 
+## بيئة سُرى المعتمدة: WSL2 على Windows (D-33)
+
+التطوير كله على جهاز Windows داخل توزيعة WSL مخصصة لسُرى، والكود ينتقل إلى خادم المعاينة عبر GitHub (`docs/04-guides/server-environment.md`).
+
+| البند | القيمة |
+| --- | --- |
+| التوزيعة | `Ubuntu-24.04` في WSL2، مطابقة لنظام الخادم، وهي التوزيعة الافتراضية |
+| المستخدم | `abdul` بلا كلمة مرور. أوامر root تُشغَّل من Windows فقط: `wsl -d Ubuntu-24.04 -u root` |
+| المستودع | `~/sura-academy` داخل WSL، لا تحت `/mnt/c`، بنهايات أسطر LF |
+| PHP | 8.4 من مستودع ondrej، بالامتدادات كلها ومعها pcov وredis وpcntl وposix |
+| الأدوات | Composer 2 في `~/.local/bin`، وNode 24 عبر nvm، وintelephense، وFlutter stable في `~/development/flutter`، وGoogle Chrome، ومتصفحات Playwright، وgh، وClaude Code مع إضافتي `dart-flutter` و`php-lsp` |
+| Docker | Docker Desktop على Windows، مع تكامل WSL للتوزيعة الافتراضية |
+
+طريقة العمل:
+1. في VS Code على Windows: F1 ثم `WSL: Connect to WSL`، ثم Open Folder ثم `/home/abdul/sura-academy`. أو من الطرفية: `code --remote wsl+Ubuntu-24.04 /home/abdul/sura-academy`.
+2. ثبّت إضافة Claude Code داخل WSL حين يعرضها VS Code، وسجّل الدخول، ووافق على الثقة بالمجلد وعلى خوادم MCP.
+3. ابدأ الحزمة بـ `/sura-wp WP-x.y` من جذر المستودع.
+
+لا يُمس على Windows: PHP في Laragon، و`C:\flutter`، وNode، وهوية git العامة.
+
 ## Claude Code
 
 1. ثبّت Claude Code وسجّل الدخول (`claude`).
