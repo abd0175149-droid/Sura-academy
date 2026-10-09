@@ -79,7 +79,7 @@
 | النافذة | (أ) التجربة: الأسابيع 6–8 · (ب) الإنتاج المبكر: الأسابيع 11–12 |
 | يعتمد على | WP-0.1 |
 | المتطلبات | SEC-08 · خط النشر في `spec/19` · النسخ الاحتياطي في `spec/18` |
-| اقرأ فقط | `spec/16-external-services.md` · `spec/19-infrastructure-devops-qa.md` · `spec/18-non-functional-requirements.md` (التوفر، النسخ) · ADR-010 |
+| اقرأ فقط | `spec/16-external-services.md` · `spec/19-infrastructure-devops-qa.md` · `spec/18-non-functional-requirements.md` (التوفر، النسخ) · ADR-010 · `docs/04-guides/server-environment.md` |
 | المراجعات | security-reviewer |
 | مهام صاحب المشروع | حساب AWS، النطاق، Cloudflare، مدير الأسرار |
 

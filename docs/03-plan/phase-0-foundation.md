@@ -14,7 +14,7 @@
 | يعتمد على | — |
 | القرارات | — |
 | المتطلبات | بنية تحتية (لا معرّفات وظيفية) |
-| اقرأ فقط | `CLAUDE.md` · `docs/02-architecture/architecture.md` (§2، §7) · ADR-001 · ADR-002 · ADR-003 · ADR-004 · `docs/04-guides/setup-dev-environment.md` |
+| اقرأ فقط | `CLAUDE.md` · `docs/02-architecture/architecture.md` (§2، §7) · ADR-001 · ADR-002 · ADR-003 · ADR-004 · `docs/04-guides/setup-dev-environment.md` · `docs/04-guides/server-environment.md` |
 | المراجعات | traceability-checker |
 
 **الهدف:** مستودع أحادي يعمل محلياً وفي CI، بهيكل `architecture.md` حرفياً.
@@ -58,7 +58,7 @@
 | النافذة | الأسبوع 0 |
 | يعتمد على | WP-0.1 |
 | المتطلبات | — |
-| اقرأ فقط | `START_HERE.md` · `docs/04-guides/setup-dev-environment.md` · `.claude/settings.json` · `.claude/hooks/*.php` |
+| اقرأ فقط | `START_HERE.md` · `docs/04-guides/setup-dev-environment.md` · `docs/04-guides/server-environment.md` · `.claude/settings.json` · `.claude/hooks/*.php` |
 | المراجعات | — |
 
 **الهدف:** إثبات أن الضوابط تعمل فعلاً قبل أول سطر منطق.
