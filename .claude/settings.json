@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bash scripts/verify.sh)",
+      "Bash(bash scripts/verify.sh *)",
+      "Bash(bash scripts/gen-api-client.sh)",
+      "Bash(php scripts/check-traceability.php)",
+      "Bash(php scripts/check-traceability.php *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout -b *)",
+      "Bash(php artisan test *)",
+      "Bash(php artisan make:*)",
+      "Bash(php artisan migrate)",
+      "Bash(php artisan migrate:status)",
+      "Bash(php artisan route:list *)",
+      "Bash(vendor/bin/pest *)",
+      "Bash(vendor/bin/pint *)",
+      "Bash(vendor/bin/phpstan *)",
+      "Bash(composer test *)",
+      "Bash(flutter test *)",
+      "Bash(flutter analyze)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter pub get)",
+      "Bash(dart pub get)",
+      "Bash(dart format *)",
+      "Bash(dart analyze *)",
+      "Bash(dart run build_runner *)",
+      "Bash(docker compose -f infra/docker/compose.yaml ps)",
+      "Bash(docker compose -f infra/docker/compose.yaml logs *)"
+    ],
+    "ask": [
+      "Bash(composer require *)",
+      "Bash(composer remove *)",
+      "Bash(flutter pub add *)",
+      "Bash(dart pub add *)",
+      "Bash(npm install *)",
+      "Bash(git push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(php artisan migrate:fresh *)",
+      "Bash(terraform *)",
+      "Bash(docker compose -f infra/docker/compose.yaml down *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./apps/api/.env)",
+      "Read(./apps/api/.env.local)",
+      "Read(./apps/api/.env.staging)",
+      "Read(./apps/api/.env.production)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./infra/terraform/**/*.tfvars)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(terraform apply *)",
+      "Bash(terraform destroy *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.php\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_guard.php\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "php \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_check.php\"", "timeout": 60 }
+        ]
+      }
+    ]
+  }
+}
