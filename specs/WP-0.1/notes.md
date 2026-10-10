@@ -9,6 +9,8 @@
 
 ## Deviations / surprises
 - T2: `minio/minio` (Docker Hub) and `quay.io/minio/minio` no longer publish images. Compose uses `cgr.dev/chainguard/minio:latest` (MinIO built from source by Chainguard; free tier offers only `latest`). Its image has bash but no grep/curl, so the health check speaks HTTP/1.1 over `/dev/tcp` (MinIO rejects HTTP/1.0 without Host with 400).
+- T5/T6: the module list is the constant `ModulesServiceProvider::MODULES` instead of `config/modules.php`. Arch tests need the list when the file loads, before the app (and config) boot. Fixture tests call the public `registerModule()` directly.
+- T6 arch proof: a temporary `App\Modules\Billing\Actions\TmpViolation` using `App\Modules\Ledger\Models\TmpEntry` made the suite fail with `Expecting 'App\Modules\Billing' not to use 'App\Modules\Ledger\Models'.` Removed → 14/14 arch tests pass.
 - T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence
