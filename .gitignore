@@ -45,3 +45,6 @@ Thumbs.db
 # Spikes are kept in git but their local secrets/builds are not
 spikes/**/.env
 spikes/**/build/
+
+# Tool output
+.playwright-mcp/

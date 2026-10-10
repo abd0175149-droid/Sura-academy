@@ -1,0 +1,11 @@
+{
+  "@@locale": "ar",
+  "appTitle": "أكاديمية سُرى",
+  "@appTitle": {
+    "description": "App name shown in the browser tab and app bar."
+  },
+  "homeSubtitle": "منطقة الأسرة",
+  "@homeSubtitle": {
+    "description": "Which Sura surface this app is, shown under the title on the home screen."
+  }
+}

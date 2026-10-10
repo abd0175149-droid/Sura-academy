@@ -6,7 +6,8 @@ environment:
   sdk: ^3.13.0
 
 workspace:
-  # apps added in T9
+  - apps/family
+  - apps/teacher
   - packages/sura_core
   - packages/sura_ui
   - packages/sura_arabic

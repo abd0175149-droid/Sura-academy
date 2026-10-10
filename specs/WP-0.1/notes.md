@@ -17,6 +17,7 @@
 - T7: Larastan flagged `env()` returning `bool|string` in `config/filesystems.php` and `config/horizon.php`; fixed with an `is_string` guard (no casts, no ignores).
 - T7: Laravel skeleton defaults kept (tinker, pail, pao, faker, mockery, collision, concurrently); listed in the ADR-002 note.
 - T8: only `sura_core` has code and a test now (`SuraLocales`, used by both apps). The other five packages are empty libraries with a doc comment; a "trivial test" there would assert nothing, so each gets tests with its first real code (WP-1.6/1.7/3.x/4.5). `flutter_test` pins `test_api`, so `sura_core` uses `test ^1.31.1` (pub-resolved).
+- T9 (open, needs owner decision): `flutter build web --wasm --no-web-resources-cdn` succeeds for both apps, but the `web:no-third-party-resources` gate fails because the engine embeds two unused default URLs: `fontFallbackBaseUrl ?? "https://fonts.gstatic.com/s/"` (main.dart.js/.wasm) and `useLocalCanvasKit ? "canvaskit" : "https://www.gstatic.com/flutter-canvaskit/..."` (flutter.js, flutter_bootstrap.js). Runtime check (Playwright, family build served on 127.0.0.1:27000): all 15 requests went to our origin, 0 to third parties. Arabic text renders as tofu: the engine asks `/fonts/notosansarabic/...` on our origin → 404 until fonts are hosted (WP-1.6). Screenshot: `specs/WP-0.1/evidence/family-web-before-fonts.png`.
 - T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence
