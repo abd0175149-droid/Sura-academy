@@ -11,6 +11,11 @@
 - T2: `minio/minio` (Docker Hub) and `quay.io/minio/minio` no longer publish images. Compose uses `cgr.dev/chainguard/minio:latest` (MinIO built from source by Chainguard; free tier offers only `latest`). Its image has bash but no grep/curl, so the health check speaks HTTP/1.1 over `/dev/tcp` (MinIO rejects HTTP/1.0 without Host with 400).
 - T5/T6: the module list is the constant `ModulesServiceProvider::MODULES` instead of `config/modules.php`. Arch tests need the list when the file loads, before the app (and config) boot. Fixture tests call the public `registerModule()` directly.
 - T6 arch proof: a temporary `App\Modules\Billing\Actions\TmpViolation` using `App\Modules\Ledger\Models\TmpEntry` made the suite fail with `Expecting 'App\Modules\Billing' not to use 'App\Modules\Ledger\Models'.` Removed → 14/14 arch tests pass.
+- T7: Fortify registers login/register/reset/2FA routes on install. `Fortify::ignoreRoutes()` in `AppServiceProvider` keeps them off until WP-1.2, guarded by the test `Platform: Fortify auth routes stay unregistered until WP-1.2 wires authentication` (WP-1.2 must remove that test and the call).
+- T7: Horizon published (`config/horizon.php`, `HorizonServiceProvider`). Its dashboard gate defaults to local-only; WP-1.3 owns the real `viewHorizon` permission.
+- T7: Laravel Boost 2.10.3 (guidelines + skills only; `--mcp` skipped because the root `.mcp.json` already defines `laravel-boost`, and it is unchanged). Boost enabled Laravel Cloud guidance; set `cloud: false` and dropped the `deploying-to-cloud` skill (we deploy to AWS). Removed the skeleton's stale `AGENTS.md` bootstrap stub. One generic Cloud line remains in the generated `apps/api/CLAUDE.md`; left as generated.
+- T7: Larastan flagged `env()` returning `bool|string` in `config/filesystems.php` and `config/horizon.php`; fixed with an `is_string` guard (no casts, no ignores).
+- T7: Laravel skeleton defaults kept (tinker, pail, pao, faker, mockery, collision, concurrently); listed in the ADR-002 note.
 - T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence

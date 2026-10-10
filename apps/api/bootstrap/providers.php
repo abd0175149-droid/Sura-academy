@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Providers\AppServiceProvider;
-use App\Providers\ModulesServiceProvider;
-
 return [
-    AppServiceProvider::class,
-    ModulesServiceProvider::class,
+    App\Providers\AppServiceProvider::class,
+    App\Providers\HorizonServiceProvider::class,
+    App\Providers\ModulesServiceProvider::class,
 ];
