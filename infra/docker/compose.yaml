@@ -1,0 +1,137 @@
+name: sura-academy
+
+# Local services for Sura Academy (WSL and the mafia-prod preview server).
+# Binding rules: docs/04-guides/server-environment.md §6. Ports: §5 (127.0.0.1 only, 2xxxx defaults).
+# Dev-only defaults below are placeholders, not secrets; real values never live in this repo.
+#
+#   docker compose -f infra/docker/compose.yaml up -d                         # core services
+#   docker compose -f infra/docker/compose.yaml --profile pdf --profile scan up -d   # + Gotenberg, ClamAV
+
+x-defaults: &defaults
+  restart: "no"
+  oom_score_adj: 800
+  networks: [sura]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  postgres:
+    <<: *defaults
+    image: postgres:17-alpine
+    mem_limit: 512m
+    cpus: 1.0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${SURA_PG_SUPERUSER_PASSWORD:-sura-dev-postgres}
+      SURA_MIGRATOR_PASSWORD: ${SURA_DB_MIGRATOR_PASSWORD:-sura-dev-migrator}
+      SURA_APP_PASSWORD: ${SURA_DB_APP_PASSWORD:-sura-dev-app}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "127.0.0.1:${SURA_DB_PORT:-25432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sura"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    <<: *defaults
+    image: redis:7-alpine
+    mem_limit: 128m
+    cpus: 0.5
+    command: ["redis-server", "--requirepass", "${SURA_REDIS_PASSWORD:-sura-dev-redis}", "--appendonly", "no"]
+    environment:
+      REDISCLI_AUTH: ${SURA_REDIS_PASSWORD:-sura-dev-redis}
+    ports:
+      - "127.0.0.1:${SURA_REDIS_PORT:-26379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    <<: *defaults
+    image: axllent/mailpit:v1.31
+    mem_limit: 64m
+    cpus: 0.25
+    ports:
+      - "127.0.0.1:${SURA_MAIL_PORT:-21025}:1025"
+      - "127.0.0.1:${SURA_MAIL_UI_PORT:-28025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # Official MinIO images are no longer published; Chainguard builds MinIO from source (see WP-0.1 notes).
+  minio:
+    <<: *defaults
+    image: cgr.dev/chainguard/minio:latest
+    mem_limit: 256m
+    cpus: 0.5
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${SURA_MINIO_ROOT_USER:-sura-dev}
+      MINIO_ROOT_PASSWORD: ${SURA_MINIO_ROOT_PASSWORD:-sura-dev-minio}
+    ports:
+      - "127.0.0.1:${SURA_MINIO_PORT:-29000}:9000"
+      - "127.0.0.1:${SURA_MINIO_CONSOLE_PORT:-29001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r line <&3 && [[ $$line == *' 200 '* ]]"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gotenberg:
+    <<: *defaults
+    profiles: [pdf]
+    image: gotenberg/gotenberg:8
+    mem_limit: 1g
+    cpus: 1.0
+    ports:
+      - "127.0.0.1:${SURA_GOTENBERG_PORT:-23000}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  clamav:
+    <<: *defaults
+    profiles: [scan]
+    image: clamav/clamav:1.5
+    mem_limit: 2g
+    cpus: 1.0
+    environment:
+      CLAMD_CONF_ConcurrentDatabaseReload: "no"
+    ports:
+      - "127.0.0.1:${SURA_CLAMAV_PORT:-23310}:3310"
+    volumes:
+      - clamavdb:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+
+networks:
+  sura:
+    ipam:
+      config:
+        - subnet: 10.213.27.0/24
+
+volumes:
+  pgdata:
+  miniodata:
+  clamavdb:

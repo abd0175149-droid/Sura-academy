@@ -3,7 +3,7 @@
 Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command required.
 
 - [x] T1 Root files: `.editorconfig`, `.gitattributes` (LF), README link check — verify: `git ls-files --eol | grep -v 'i/lf' | grep -v 'i/-text'` is empty
-- [ ] T2 Docker: `infra/docker/compose.yaml` (postgres 17, redis 7, mailpit, minio, gotenberg[pdf], clamav[scan]) + PG init roles/DBs + health checks — verify: `docker compose -f infra/docker/compose.yaml --profile pdf --profile scan up -d && docker compose -f infra/docker/compose.yaml ps` (all healthy)
+- [x] T2 Docker: `infra/docker/compose.yaml` (postgres 17, redis 7, mailpit, minio, gotenberg[pdf], clamav[scan]) + PG init roles/DBs + health checks — verify: `docker compose -f infra/docker/compose.yaml --profile pdf --profile scan up -d && docker compose -f infra/docker/compose.yaml ps` (all healthy)
 - [ ] T3 Laravel 13 skeleton: `composer create-project`, PG/Redis/UTC/ar-en config, `.env.example` matching compose, remove `sessions` migration, phpunit on PG `sura_test` — verify: `php artisan migrate` on local PG; `\dt` has no `sessions`
 - [ ] T4 Tooling: Pest + arch/laravel plugins, Larastan level 8 (`phpstan.neon`), `pint.json` — verify: `vendor/bin/pint --test && vendor/bin/phpstan analyse`
 - [ ] T5 Tests first: platform tests (UTC, locale, no sessions table), provider tests (routes /api/v1, policy discovery via fixture module), arch tests (directories, cross-module Models ban) → run, see them fail for the right reason — verify: `php artisan test` fails as expected

@@ -8,7 +8,8 @@
 - ADR-001: 11 module directories (`Jobs (بنية)` is infrastructure, not a module directory).
 
 ## Deviations / surprises
-- (none)
+- T2: `minio/minio` (Docker Hub) and `quay.io/minio/minio` no longer publish images. Compose uses `cgr.dev/chainguard/minio:latest` (MinIO built from source by Chainguard; free tier offers only `latest`). Its image has bash but no grep/curl, so the health check speaks HTTP/1.1 over `/dev/tcp` (MinIO rejects HTTP/1.0 without Host with 400).
+- T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence
 ```
