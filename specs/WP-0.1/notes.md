@@ -16,6 +16,7 @@
 - T7: Laravel Boost 2.10.3 (guidelines + skills only; `--mcp` skipped because the root `.mcp.json` already defines `laravel-boost`, and it is unchanged). Boost enabled Laravel Cloud guidance; set `cloud: false` and dropped the `deploying-to-cloud` skill (we deploy to AWS). Removed the skeleton's stale `AGENTS.md` bootstrap stub. One generic Cloud line remains in the generated `apps/api/CLAUDE.md`; left as generated.
 - T7: Larastan flagged `env()` returning `bool|string` in `config/filesystems.php` and `config/horizon.php`; fixed with an `is_string` guard (no casts, no ignores).
 - T7: Laravel skeleton defaults kept (tinker, pail, pao, faker, mockery, collision, concurrently); listed in the ADR-002 note.
+- T8: only `sura_core` has code and a test now (`SuraLocales`, used by both apps). The other five packages are empty libraries with a doc comment; a "trivial test" there would assert nothing, so each gets tests with its first real code (WP-1.6/1.7/3.x/4.5). `flutter_test` pins `test_api`, so `sura_core` uses `test ^1.31.1` (pub-resolved).
 - T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence

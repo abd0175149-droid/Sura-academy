@@ -1,0 +1,18 @@
+name: sura_workspace
+description: "Sura Academy Dart workspace (ADR-003): Flutter apps and shared packages."
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  # apps added in T9
+  - packages/sura_core
+  - packages/sura_ui
+  - packages/sura_arabic
+  - packages/sura_api
+  - packages/sura_kids
+  - packages/sura_classroom
+
+dev_dependencies:
+  very_good_analysis: ^11.0.0

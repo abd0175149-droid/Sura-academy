@@ -1,0 +1,12 @@
+name: sura_core
+description: "Shared types for Sura apps: result, time, money, localization keys, settings."
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+resolution: workspace
+
+dev_dependencies:
+  test: ^1.31.1

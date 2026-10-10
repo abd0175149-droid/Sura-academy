@@ -1,0 +1,9 @@
+name: sura_arabic
+description: "Arabic text utilities: normalization, keyboard and numerals."
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+resolution: workspace

@@ -1,0 +1,10 @@
+# Shared lint rules for every app and package in the Dart workspace (ADR-003).
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/lib/l10n/generated/**"
+    - "packages/sura_api/lib/src/generated/**"
+    - "**/build/**"
