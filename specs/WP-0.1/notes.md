@@ -6,6 +6,7 @@
   - Q2: one compose file; host ports from `SURA_*_PORT` variables defaulting to the server table (25432, 26379, 21025, 28025, 29000, 29001, 23000, 23310). `.env.example` uses the same values.
 - D-32/D-33: compose follows `server-environment.md` §6 so the same file runs on WSL and on `mafia-prod`.
 - ADR-001: 11 module directories (`Jobs (بنية)` is infrastructure, not a module directory).
+- Owner reply 2026-10-11 («قم بالتنفيذ») to the closing questions: push and open the PR; amend the WP-1.6 test line to the runtime check (done in `phase-1-platform-core.md`, citing D-34); MinIO substitute image `cgr.dev/chainguard/minio` (pinned by digest) accepted. D-34 stays Open in `decisions.md` until the owner changes its status (Claude never changes an existing decision's status).
 
 ## Deviations / surprises
 - T2: `minio/minio` (Docker Hub) and `quay.io/minio/minio` no longer publish images. Compose uses `cgr.dev/chainguard/minio:latest` (MinIO built from source by Chainguard; free tier offers only `latest`). Its image has bash but no grep/curl, so the health check speaks HTTP/1.1 over `/dev/tcp` (MinIO rejects HTTP/1.0 without Host with 400).
