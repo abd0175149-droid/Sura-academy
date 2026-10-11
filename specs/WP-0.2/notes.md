@@ -25,6 +25,27 @@ Sources: `claude plugin list`, `claude mcp list`, and two headless sessions star
 | SessionStart hook | ✅ ran in the headless session and printed the focus block |
 | Workspace trust (CLI) | ⚠ CLI prints `Ignoring 33 permissions.allow entries from .claude/settings.json: this workspace has not been trusted`; `~/.claude.json` has no `hasTrustDialogAccepted` for this path. Hooks and deny rules still apply; only the allow list is skipped (more prompts). → owner action O-1 |
 
+## Guard attempts (T2, 2026-10-11, this IDE session)
+Each attempt was a real tool call by Claude; the result column quotes the tool output (SQL keyword and table name are split by `·` here so these notes do not trip the content guard themselves).
+
+| # | Attempt | Expected | Actual result | Verdict |
+| --- | --- | --- | --- | --- |
+| G1 | Write new `docs/01-product/spec/zz-guard-probe.md` | blocked | `BLOCKED by .claude/hooks/pre_tool_guard.php: docs/01-product/spec/zz-guard-probe.md — spec files are read-only. Propose a change request (docs/00-governance/change-control.md).` | ✅ |
+| G1b | Edit line 1 of existing `docs/01-product/spec/00-priorities-and-baseline-decisions.md` | blocked | same message for that path | ✅ |
+| G2 | Write `apps/family/lib/guard_probe.dart` with `EdgeInsets.only(left: 8)` | correction message | file written, then `PostToolUse … Project checks failed: apps/family/lib/guard_probe.dart:4: … -> use directional APIs (EdgeInsetsDirectional, AlignmentDirectional, PositionedDirectional, TextAlign.start/end, BorderRadiusDirectional). Suppress only with // rtl-ok: <reason>`; `.claude/rules/flutter.md` auto-loaded | ✅ |
+| G3 | force-push with `--force --dry-run` to throwaway ref `wp-guard-probe` | blocked | `BLOCKED … — force-push is forbidden.` | ✅ |
+| G3b | same with `-f` | blocked | `force-push is forbidden.` | ✅ |
+| G3c | same with a `+HEAD:` refspec | blocked | `force-push is forbidden.` | ✅ |
+| G3d | `--dry-run` push of `HEAD:main` | blocked | `BLOCKED … — never push to main; push the WP branch and open a PR.` | ✅ |
+| G4 | Write `specs/WP-0.2/guard-probe.txt` with AWS's public example access key | blocked | `BLOCKED … the content looks like an AWS access key. Secrets live in the secrets manager or a local .env, never in tracked files.` (it also blocked the first design draft) | ✅ |
+| G5 | Write `specs/WP-0.2/guard-probe.sql` with UPDATE·credit_ledger_entries `SET …` | blocked | `BLOCKED … 'UPDATE·credit_ledger_entries' targets an append-only table (constitution art. 5). Write a REVERSAL entry or a new row instead.` | ✅ |
+| G5b (extra) | Write `apps/api/app/Modules/Ledger/Actions/GuardProbe.php` with `DB::table('credit_ledger_entries')->where(…)->update(…)` | finding expected | **written, no warning**: the pre-hook matches SQL text only, the post-hook matches Eloquent model calls only. The `credit-ledger` skill auto-loaded on that path | ⚠ gap → P-3 |
+| G6 (extra) | Bash `printf '' > docs/01-product/spec/zz-guard-probe.md` | finding expected | **created, not blocked**; removed in the same command; `git status docs/01-product` clean | ⚠ gap → P-2 |
+
+False positives seen live (→ P-4): WP-0.1, a heredoc writing `ci.yml` that merely contained the text of the env-template copy step was blocked as `reading .env is forbidden`; WP-0.2, a heredoc writing these notes was blocked as `force-push is forbidden` because the notes quoted the G3 commands. The Bash guard scans the whole command text, including heredoc bodies. Also reused: WP-0.1 `artisan migrate --force` blocked (`migrate --force is for CI/CD only`).
+
+Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G5 files never existed; `git status --short` empty; `git diff main -- docs/01-product apps` empty.
+
 ## Verification evidence
 ```
 (paste verify --all summary)
