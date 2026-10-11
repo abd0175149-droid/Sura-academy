@@ -58,15 +58,41 @@ Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G
 - `START_HERE.md` §3–§4 rewritten for WSL (D-33); §6 now states that shell writes to protected paths are not blocked yet (P-2) and points to the guard suite.
 
 ## Verification evidence
+`bash scripts/verify.sh --all` on 2026-10-11 (WSL):
 ```
-(paste verify --all summary)
+──────── verify summary (--all) ────────
+✅ api:pint
+✅ api:phpstan
+✅ api:tests+coverage(80)
+✅ dart:format
+✅ dart:analyze
+✅ flutter:test:packages/sura_core
+✅ flutter:test:apps/family
+✅ flutter:test:apps/teacher
+✅ web:build:apps/family
+✅ web:no-third-party-requests:apps/family
+✅ web:build:apps/teacher
+✅ web:no-third-party-requests:apps/teacher
+✅ guards
+✅ traceability
 ```
 | Acceptance criterion | Evidence |
 | --- | --- |
+| Every attempt in deliverable 3 documented with its expected result | §Guard attempts: G1–G5 all ✅ as expected (plus G1b, G3b–d), extras G5b and G6 documented as gaps with proposals P-3 and P-2; repeatable via `php scripts/test-guards.php` (88/88) |
+| `/sura-status` works and shows next WP-0.3 | Focus block in `status.md` names WP-0.3. `/sura-status` is user-invocable only (`disable-model-invocation: true`), so the owner runs it; result recorded below when received |
+
+Deliverables 1, 2, 4, 5: §Inventory, §Audit, `proposals.md`, §Guard attempts (cleanup line).
 
 ## Review findings
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
 
 ## خطوات العرض اليدوي
-1. …
+كل الأوامر من جذر المستودع `~/sura-academy` داخل WSL، على الفرع `wp/WP-0.2-guardrails-proof`.
+
+1. اكتب في محادثة Claude: `/sura-status`. يجب أن يعرض الحزمة التالية WP-0.3، وWP-0.2 بحالة Review. (يعمل من جوالك أيضاً.)
+2. شغّل اختبار الضوابط: `php scripts/test-guards.php`. النتيجة `guard tests: 88/88 as expected` مع قائمة الثغرات المعروفة (P-2 وP-3 وP-4).
+3. اطلب من Claude في جلسة أن يكتب ملفاً داخل `docs/01-product/spec/`. يجب أن يُرفض بالرسالة «spec files are read-only».
+4. اطلب منه أن يكتب في ملف Dart `EdgeInsets.only(left: 8)`. يجب أن تظهر رسالة «use directional APIs». احذف الملف بعدها.
+5. (اختياري) شغّل في جلسة Claude: `/mcp` و`/agents` و`/context` و`/doctor`، وقارنها بجدول «Inventory» أعلاه.
+6. عند عودتك إلى الجهاز: نفّذ O-1 (شغّل `claude` مرة من جذر المستودع ووافق على الثقة) وO-2 (ضع `CONTEXT7_API_KEY` في ملف الطرفية)، ثم طبّق المقترحات بالخطوات في `specs/WP-0.2/proposals.md` §How to apply، وتحقق أن `php scripts/test-guards.php` يعطي 88/88.
