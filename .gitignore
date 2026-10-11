@@ -16,8 +16,6 @@ apps/api/node_modules/
 apps/api/public/build/
 apps/api/public/hot
 apps/api/storage/*.key
-apps/api/storage/logs/
-apps/api/storage/framework/
 apps/api/.phpunit.result.cache
 apps/api/coverage/
 
