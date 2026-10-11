@@ -118,3 +118,5 @@ jobs:
           php-version: "8.4"
           coverage: none
       - run: bash scripts/verify.sh --all --only traceability
+      # Replays tool calls against .claude/hooks and asserts block/allow (WP-0.2).
+      - run: bash scripts/verify.sh --all --only guards

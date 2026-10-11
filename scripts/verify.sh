@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sura Academy quality gates.
-# Usage: bash scripts/verify.sh [--changed|--all] [--only api|contract|dart|traceability]
+# Usage: bash scripts/verify.sh [--changed|--all] [--only api|contract|dart|guards|traceability]
 #   --changed (default): gates for areas touched since HEAD (staged, unstaged, untracked)
 #   --all: every gate, with coverage thresholds where a coverage driver exists
 #   --only <area>: run just that area's gates (CI runs one area per job)
@@ -15,7 +15,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-case "$ONLY" in ""|api|contract|dart|traceability) ;; *) echo "unknown area: $ONLY" >&2; exit 2 ;; esac
+case "$ONLY" in ""|api|contract|dart|guards|traceability) ;; *) echo "unknown area: $ONLY" >&2; exit 2 ;; esac
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
@@ -79,6 +79,11 @@ if area dart && [ -f pubspec.yaml ] && touches '^(apps/(family|teacher|kids)/|pa
       gate "web:no-third-party-requests:$app" node scripts/web/check-no-third-party.mjs "$app/build/web"
     done
   fi
+fi
+
+# ---------- Claude Code guard hooks (WP-0.2) ----------
+if area guards && touches '^(\.claude/|scripts/test-guards\.php)'; then
+  gate "guards" php scripts/test-guards.php
 fi
 
 # ---------- Traceability (always, unless another area is selected) ----------

@@ -46,6 +46,12 @@ False positives seen live (→ P-4): WP-0.1, a heredoc writing `ci.yml` that mer
 
 Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G5 files never existed; `git status --short` empty; `git diff main -- docs/01-product apps` empty.
 
+## Guard regression suite (T4)
+- `php scripts/test-guards.php`: 83 cases (64 pre-hook, 19 post-hook) replaying Claude Code's hook JSON, offline (local bare git remotes, temp project root for post-hook files), ~3 s. Result: `guard tests: 83/83 as expected`, with 10 known-gap cases listed (P-2, P-3, P-4) that fail on purpose once a proposal changes the behaviour.
+- Proof it catches regressions: a copy of `pre_tool_guard.php` with the spec rule broken (`GUARD_HOOKS_DIR=<copy>`) → `79/83`, failing exactly G1, G1b, source file and relative path. Real hooks untouched (`git status .claude` empty).
+- Found while writing it: the post hook runs `dart format` before checking, so a `// parental-gate-ok` (or `rtl-ok`) marker must be on the offending line of the *formatted* code; the suite has a case for both shapes. `grep … apps/api/.env` is blocked only because the env-dump rule happens to match `.env` at the end of the command; with output redirected, or via python, reading `.env` is allowed (P-4).
+- Wired as gate `guards` in `verify.sh` (runs under `--all`, or when `.claude/` or the suite changes) and as a CI step in the `traceability` job.
+
 ## Verification evidence
 ```
 (paste verify --all summary)
