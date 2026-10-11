@@ -1,0 +1,5 @@
+# Headless session from the repo root, 2026-10-11T18:08:59Z, Claude Code 2.1.295
+# prompt: Do not use any tools. Line 1: quote verbatim the first line of the project CLAUDE.md instructions loaded into your context. Line 2: list, comma-separated, the agent types available to you that are defined by this project (not built-in).
+# answer:
+# Sura Academy (أكاديمية سُرى) — Project Constitution for Claude
+ledger-auditor, privacy-reviewer, rtl-reviewer, security-reviewer, spec-reader, traceability-checker

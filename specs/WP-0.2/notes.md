@@ -18,8 +18,10 @@ Sources: `claude plugin list`, `claude mcp list`, and two headless sessions star
 | MCP `dart` (`plugin:dart-flutter:dart-mcp-server`) | ✅ connected (CLI list and headless init) |
 | MCP `laravel-boost` | ✅ connected in headless init (JSON-RPC `initialize` answered in WP-0.1). In this IDE session it failed at startup only because `apps/api` did not exist yet |
 | MCP `context7` | ⚠ connected in headless init, but `claude mcp list` warns `Missing environment variables: CONTEXT7_API_KEY` → owner sets the key (runs keyless/rate-limited until then) |
-| MCP `playwright` | ⚠ `pending` approval outside this IDE session (works here: used in WP-0.1) → proposal P-1 |
-| `CLAUDE.md` loaded | ✅ headless session quoted line 1 verbatim: `# Sura Academy (أكاديمية سُرى) — Project Constitution for Claude` |
+| MCP `playwright` | ⚠ `pending` approval in a fresh session (headless init) → P-1. It does work once approved: the IDE session used the Playwright MCP server in WP-0.1 (`browser_navigate`, `browser_network_requests`, and `browser_take_screenshot`, which produced `specs/WP-0.1/evidence/family-web-before-fonts.png`) |
+| `CLAUDE.md` loaded | ✅ headless session quoted line 1 verbatim: `# Sura Academy (أكاديمية سُرى) — Project Constitution for Claude` (full prompt and answer: `specs/WP-0.2/evidence/headless-claude-md.txt`) |
+
+**Deliverable 1 status: partially met, owner-gated.** Plugins, dart and laravel-boost are ✅. Playwright needs P-1 (or one interactive approval) and context7 needs O-2 (key). After the owner applies them, re-run `claude mcp list` and record `playwright: connected` here.
 | Project skills | ✅ 12 in `.claude/skills`: workflow `sura-wp`, `sura-status`, `verify` listed as slash commands; the 9 domain skills are path-scoped (`paths:` frontmatter), so they appear only when matching files are touched (seen live: `arabic-rtl-ui` appeared when Dart files were edited in WP-0.1) |
 | Project agents | ✅ 6: ledger-auditor, privacy-reviewer, rtl-reviewer, security-reviewer, spec-reader, traceability-checker (headless init + headless answer) |
 | SessionStart hook | ✅ ran in the headless session and printed the focus block |
@@ -47,14 +49,15 @@ False positives seen live (→ P-4): WP-0.1, a heredoc writing `ci.yml` that mer
 Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G5 files never existed; `git status --short` empty; `git diff main -- docs/01-product apps` empty.
 
 ## Guard regression suite (T4)
-- `php scripts/test-guards.php`: 83 cases (64 pre-hook, 19 post-hook) replaying Claude Code's hook JSON, offline (local bare git remotes, temp project root for post-hook files), ~3 s. Result: `guard tests: 83/83 as expected`, with 10 known-gap cases listed (P-2, P-3, P-4) that fail on purpose once a proposal changes the behaviour.
-- Proof it catches regressions: a copy of `pre_tool_guard.php` with the spec rule broken (`GUARD_HOOKS_DIR=<copy>`) → `79/83`, failing exactly G1, G1b, source file and relative path. Real hooks untouched (`git status .claude` empty).
+- `php scripts/test-guards.php`: 94 cases (73 pre-hook, 21 post-hook) replaying Claude Code's hook JSON, offline (local bare git remotes, temp project root for post-hook files), ~3 s. Result: `guard tests: 94/94 as expected`, with 10 known-gap cases listed (P-2, P-3, P-4) that fail on purpose once a proposal changes the behaviour. It exits with a clear message when the Dart SDK is missing (the post hook formats Dart before checking).
+- Proof it catches regressions: a copy of `pre_tool_guard.php` with the spec rule broken (`GUARD_HOOKS_DIR=<copy>`) → `90/94`, failing exactly G1, G1b, source file and relative path. Real hooks untouched (`git status .claude` empty).
+- After review (M1) it also pins that heredocs which execute their body stay blocked (`cat <<EOF | bash`, `tee f <<EOF | sh`, a heredoc script run afterwards, `bash <<EOF`), and that P-2 must not block reads or commit messages containing `->`.
 - Found while writing it: the post hook runs `dart format` before checking, so a `// parental-gate-ok` (or `rtl-ok`) marker must be on the offending line of the *formatted* code; the suite has a case for both shapes. `grep … apps/api/.env` is blocked only because the env-dump rule happens to match `.env` at the end of the command; with output redirected, or via python, reading `.env` is allowed (P-4).
-- Wired as gate `guards` in `verify.sh` (runs under `--all`, or when `.claude/` or the suite changes) and as a CI step in the `traceability` job.
+- Wired as gate `guards` in `verify.sh` (runs under `--all`, or when `.claude/` or the suite changes) and as a CI step in the `dart` job (moved there after review B1: the `traceability` job has no Dart SDK).
 
 ## Audit (T5)
-- `claude doctor` (CLI, 2.1.295): "No installation issues found"; one invalid setting: `.mcp.json › mcpServers.context7: Missing environment variables: CONTEXT7_API_KEY` (→ O-2). The interactive `/doctor` is optional for the owner.
-- Settings and hooks audited against the constitution → `specs/WP-0.2/proposals.md`: P-1…P-5 as ready-to-apply patches (each `git apply --check` clean) plus owner actions O-1 (trust the workspace in the CLI) and O-2 (Context7 key). The hook patch was validated on a patched copy: exactly the 8 known-gap cases flip, nothing else regresses; with the companion suite patch the result is 88/88.
+- `claude doctor` (CLI, 2.1.295): "No installation issues found"; one invalid setting: `.mcp.json › mcpServers.context7: Missing environment variables: CONTEXT7_API_KEY` (→ O-2). The WP names `/doctor prompt-audit`, an interactive in-session command Claude cannot run; it was substituted by the CLI `claude doctor` plus a manual audit of settings and hooks against the constitution. The owner may run `/doctor` in a session and append anything new to `proposals.md`.
+- Settings and hooks audited against the constitution → `specs/WP-0.2/proposals.md`: P-1…P-5 as ready-to-apply patches (each `git apply --check` clean) plus owner actions O-1 (trust the workspace in the CLI) and O-2 (Context7 key). The hook patch was validated on a patched copy: exactly the 8 known-gap cases flip, nothing else regresses; with the companion suite patch the result is 94/94.
 - `START_HERE.md` §3–§4 rewritten for WSL (D-33); §6 now states that shell writes to protected paths are not blocked yet (P-2) and points to the guard suite.
 
 ## Verification evidence
@@ -84,8 +87,21 @@ Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G
 Deliverables 1, 2, 4, 5: §Inventory, §Audit, `proposals.md`, §Guard attempts (cleanup line).
 
 ## Review findings
+The WP lists no reviewers; `traceability-checker` ran per the WP workflow (verdict before fixes: not ready, 2 BLOCKER, 3 MAJOR).
+
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
+| traceability-checker | BLOCKER | B1: CI `guards` step ran in the `traceability` job, which has no Dart SDK; the suite then fails (87/88 reproduced without dart on PATH) | Fixed: step moved to the `dart` job; the suite now exits early with a clear "Dart SDK not on PATH" message |
+| traceability-checker | BLOCKER | B2: acceptance criterion `/sura-status` shows WP-0.3 needs the owner (skill is user-invocable only) | Owner-gated: focus block names WP-0.3; owner types `/sura-status`, result recorded under Verification evidence |
+| traceability-checker | MAJOR | M1: proposed P-4 heredoc exception let `cat <<EOF \| bash`, `tee f <<EOF \| sh` and "write script then run it" hide commands | Fixed in the proposal: a body is skipped only when written by cat/tee, the opening line has at most a `> file` redirect, and nothing follows the heredoc. Suite pins 4 execute-the-body cases (blocked with current and patched hooks) |
+| traceability-checker | MAJOR | M2: `ci.yml` change not declared in design | Fixed: design §1 lists all integration points |
+| traceability-checker | MAJOR | M3: deliverable 1 only partly met (playwright pending in fresh sessions, context7 keyless) | Marked "partially met, owner-gated" in §Inventory with the P-1/O-2 follow-up; MCP Playwright use in WP-0.1 now evidenced |
+| traceability-checker | MINOR | Stale suite numbers in §T4 | Fixed (94 cases, 90/94 broken-hook proof) |
+| traceability-checker | MINOR | Weak CLAUDE.md evidence | Fixed: `evidence/headless-claude-md.txt` (prompt + answer) |
+| traceability-checker | MINOR | `/doctor prompt-audit` not run literally | Documented the substitution in §Audit; owner may run it |
+| traceability-checker | MINOR | P-2 false positives (`->` in a commit message; broad `open(` pattern) | Fixed in the proposal (`->`/`=>` excluded, `open(` needs a mode argument); allow cases added to the suite |
+| traceability-checker | MINOR | status `Review` before a PR exists | Fixed when the PR is opened (row shows the PR number) |
+| traceability-checker | MINOR | D-33 still Open in `decisions.md` | Owner action (Claude never changes a decision's status) |
 
 ## خطوات العرض اليدوي
 كل الأوامر من جذر المستودع `~/sura-academy` داخل WSL، على الفرع `wp/WP-0.2-guardrails-proof`.

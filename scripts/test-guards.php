@@ -26,6 +26,13 @@ $pre = $hooks.'/pre_tool_guard.php';
 $post = $hooks.'/post_tool_check.php';
 $php = PHP_BINARY;
 
+// The post hook runs `dart format` before checking, and some cases depend on the formatted layout.
+exec('command -v dart', $dartPath, $dartMissing);
+if ($dartMissing !== 0) {
+    fwrite(STDERR, "test-guards: the Dart SDK is not on PATH; the post-hook cases need it (the hook formats Dart before checking).\n");
+    exit(1);
+}
+
 $tmp = sys_get_temp_dir().'/sura-guard-tests-'.getmypid();
 register_shutdown_function(static function () use ($tmp): void {
     if (is_dir($tmp)) {
@@ -163,6 +170,14 @@ $preCases = [
     ['reading the spec through a pipe is allowed', $b('grep -rn RBAC-01 docs/01-product/spec | head -5'), 'allow', null, null, null],
     ['reading the spec with stderr discarded is allowed', $b("sed -n '1,20p' docs/01-product/spec/00-priorities-and-baseline-decisions.md 2>/dev/null"), 'allow', null, null, null],
     ['git status on the spec dir is allowed', $b('git status --short docs/01-product'), 'allow', null, null, null],
+    ['commit message with an arrow naming the spec dir is allowed', $b('git commit -m "docs: see -> docs/01-product/spec/ for RBAC-01"'), 'allow', null, null, null],
+    ['python reading a spec file is allowed', $b("python3 -c \"print(open('docs/01-product/spec/x.md').read())\""), 'allow', null, null, null],
+
+    // Heredocs that execute their body must stay fully scanned (guards any future heredoc exception).
+    ['heredoc piped into a shell', $b("cat <<'EOF' | bash\ngit push --force origin x\nEOF"), 'block', 'force-push', null, null],
+    ['tee heredoc piped into sh', $b("tee run.sh <<'EOF' | sh\ngit push --force origin x\nEOF"), 'block', 'force-push', null, null],
+    ['heredoc script run after it is written', $b("cat > /tmp/r.sh <<'EOF'\ngit reset --hard HEAD~1\nEOF\nbash /tmp/r.sh"), 'block', 'reset --hard', null, null],
+    ['heredoc fed to bash', $b("bash <<'EOF'\nphp artisan migrate --force\nEOF"), 'block', 'CI/CD only', null, null],
 
     // Known gaps and false positives (proposals.md)
     ['Bash redirect into spec (G6)', $b('printf x > docs/01-product/spec/zz.md'), 'allow', null, null, 'P-2'],

@@ -4,6 +4,7 @@
 - In scope (IDs): none (environment WP). Deliverables 1–5 and the two acceptance criteria of `phase-0-foundation.md#WP-0.2`.
 - Explicitly out of scope: any product code; editing `.claude/settings.json` or `.claude/hooks/*` (human-only, hook-enforced). Fixes to those files are written as exact proposals for the owner.
 - Decisions applied: D-33 (development in WSL; the dev-server controls in `server-environment.md` §4 apply only on `mafia-prod`). No other D-xx in the WP row.
+- Integration points outside `specs/WP-0.2/` (added after review, M2): `scripts/test-guards.php` (new), `scripts/verify.sh` (gate `guards`), `.github/workflows/ci.yml` (guards step in the `dart` job, which has the Dart SDK the post hook needs), `START_HERE.md` §3, §4, §6, `docs/03-plan/status.md` (WP-0.2 row and focus block).
 - Session note: the owner is remote and authorized running WP-0.2 in the same session as WP-0.1 without `/clear` (owner message 2026-10-11). Recorded in notes.md.
 
 ## 2. Traceability

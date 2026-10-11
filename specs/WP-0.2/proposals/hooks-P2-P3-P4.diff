@@ -1,20 +1,22 @@
 --- a/.claude/hooks/pre_tool_guard.php
 +++ b/.claude/hooks/pre_tool_guard.php
-@@ -73,6 +73,13 @@
+@@ -73,6 +73,15 @@
  
  if ($tool === 'Bash') {
      $cmd = (string) ($ti['command'] ?? '');
-+    // P-4: text rules skip heredoc bodies written by cat/tee (data, not commands). Bodies fed to
-+    // shells or interpreters stay in, so `bash <<EOF … EOF` cannot hide a command.
++    // P-4: text rules skip a heredoc body only when it is pure data: written by cat/tee, its opening
++    // line ends with at most a `> file` redirect (no pipe, no `;`/`&&`), and it is the last thing in
++    // the command (nothing runs after it). `bash <<EOF`, `cat <<EOF | sh` and `… EOF; bash f.sh`
++    // stay fully scanned.
 +    $scan = (string) preg_replace_callback(
-+        '/(\b(?:cat|tee)\b[^\n]*<<-?\s*([\'"]?)(\w+)\2[^\n]*\n).*?\n[ \t]*\3[ \t]*(?=\n|$)/s',
++        '/^(.*?\b(?:cat|tee)\b[^\n|;&<]*<<-?[ \t]*([\'"]?)(\w+)\2[ \t]*(?:>>?[ \t]*[^\s|;&]+[ \t]*)?\n).*?\n[ \t]*\3[ \t]*\z/s',
 +        static fn (array $m): string => $m[1] . 'HEREDOC_BODY',
 +        $cmd,
 +    );
      $deny = [
          '/\bgit\s+reset\s+--hard\b/' => 'git reset --hard can destroy work; ask the user',
          '/\bgit\s+(filter-branch|filter-repo)\b/' => 'history rewriting is forbidden',
-@@ -80,14 +87,14 @@
+@@ -80,14 +89,14 @@
          '/\bartisan\s+(migrate:fresh|migrate:reset|db:wipe)\b.*--env=(production|staging)/' => 'destructive migration on a shared environment',
          '/\bartisan\s+migrate\b.*--force/' => 'migrate --force is for CI/CD only',
          '/\b(cat|less|more|head|tail|type|bat)\s+[^|;&]*\.env(\.(?!example)\w+)?(\s|$)/' => 'reading .env is forbidden',
@@ -31,7 +33,7 @@
          $rest = (string) preg_replace('/[;&|].*$/s', '', $pm[1]);
          if (preg_match('/(^|\s)(--force(-with-lease)?|--force-if-includes|-f)(\s|=|$)/', $rest) || preg_match('/(^|\s)\+\S+/', $rest)) {
              block("`{$cmd}` — force-push is forbidden.");
-@@ -114,8 +121,21 @@
+@@ -114,8 +123,21 @@
          }
      }
  
@@ -43,7 +45,7 @@
 +
 +    // P-2: writes to human-only paths through the shell (redirects, sed -i, cp/mv/rm, tee, …).
 +    $humanOnly = '#(^|[\s\'"=:/])(docs/01-product/(spec|source)/|docs/00-governance/constitution\.md|\.claude/(settings\.json|hooks/)|packages/sura_api/lib/src/generated/)#';
-+    $writes = '#(?<![\d&<>])>>?(?!&|\s*/dev/null)|\btee\b|\bsed\s+(-\w+\s+)*-\w*i|\bperl\s+-\w*i|\b(cp|mv|rm|rmdir|install|ln|truncate|dd|touch|chmod|unlink|rsync)\b|open\([^)]*[\'"][wax]#';
++    $writes = '#(?<![\d&<>=-])>>?(?!&|\s*/dev/null)|\btee\b|\bsed\s+(-\w+\s+)*-\w*i|\bperl\s+-\w*i|\b(cp|mv|rm|rmdir|install|ln|truncate|dd|touch|chmod|unlink|rsync)\b|open\([^)]*,\s*[\'"][wax]#';
 +    if (preg_match($humanOnly, $cmd) && preg_match($writes, $cmd)) {
 +        block("`{$cmd}` — writes to a human-only path (spec, constitution, Claude settings/hooks, generated code). Propose the change instead.");
 +    }

@@ -1,7 +1,7 @@
 --- a/scripts/test-guards.php
 +++ b/scripts/test-guards.php
-@@ -165,13 +165,13 @@
-     ['git status on the spec dir is allowed', $b('git status --short docs/01-product'), 'allow', null, null, null],
+@@ -180,13 +180,13 @@
+     ['heredoc fed to bash', $b("bash <<'EOF'\nphp artisan migrate --force\nEOF"), 'block', 'CI/CD only', null, null],
  
      // Known gaps and false positives (proposals.md)
 -    ['Bash redirect into spec (G6)', $b('printf x > docs/01-product/spec/zz.md'), 'allow', null, null, 'P-2'],
@@ -21,7 +21,7 @@
      ['heredoc quoting a force push (false positive)', $b("python3 - <<'EOF'\nnotes = 'git push --force was blocked'\nEOF"), 'block', 'force-push', null, 'P-4'],
      ['echo naming a SQL verb and a ledger table (false positive)', $b('echo "'.$sql('truncate', 'consents').' renamed"'), 'block', 'append-only', null, 'P-4'],
  ];
-@@ -200,7 +200,7 @@
+@@ -215,7 +215,7 @@
      ['float in Billing', 'apps/api/app/Modules/Billing/A.php', "<?php function f(float \$x) {}\n", 'block', 'float near money', null],
      ['ledger model mutation', 'apps/api/app/Modules/Ledger/A.php', "<?php CreditLedgerEntry::query()->where('id', 1)->update(['x' => 1]);\n", 'block', 'append-only model', null],
      ['clean php is allowed', 'apps/api/app/Modules/Ledger/A.php', "<?php \$x = 1;\n", 'allow', null, null],
