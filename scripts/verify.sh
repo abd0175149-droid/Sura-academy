@@ -69,10 +69,13 @@ if area dart && [ -f pubspec.yaml ] && touches '^(apps/(family|teacher|kids)/|pa
     fi
   done
   if [ "$MODE" = "--all" ]; then
-    # Runtime check (headless Chromium, wasm and JS paths): no request may leave our origin.
+    # Fresh release build (ADR-010), then a runtime check in headless Chromium on the wasm and
+    # JS paths: no request may leave our origin (D-34). Built here so the check never skips or
+    # runs on a stale build. One build at a time (server-environment.md §3).
+    [ -d scripts/web/node_modules ] || npm ci --prefix scripts/web --no-audit --no-fund >/dev/null
     for app in apps/family apps/teacher; do
-      [ -d "$app/build/web" ] || continue
-      [ -d scripts/web/node_modules ] || npm ci --prefix scripts/web --no-audit --no-fund >/dev/null
+      [ -d "$app" ] || continue
+      gate "web:build:$app" in_dir "$app" flutter build web --wasm --no-web-resources-cdn --release
       gate "web:no-third-party-requests:$app" node scripts/web/check-no-third-party.mjs "$app/build/web"
     done
   fi

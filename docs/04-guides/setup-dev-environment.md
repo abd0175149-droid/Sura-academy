@@ -97,6 +97,16 @@ docker compose -f infra/docker/compose.yaml ps
 cd apps/api && composer install && cp .env.example .env && php artisan key:generate && php artisan migrate
 ```
 
+## فحص بناء الويب
+
+`bash scripts/verify.sh --all` يبني تطبيقي الويب، ثم يحمّل كلاً منهما في Chromium بلا واجهة ويفشل عند أي طلب خارج نطاقنا (D-34). يحتاج مرة واحدة:
+
+```bash
+npm ci --prefix scripts/web && npx --prefix scripts/web playwright install chromium
+```
+
+لا تستخدم `--with-deps` على خادم المعاينة (`server-environment.md` §8).
+
 ## الأسرار
 
 لا سر في المستودع أبداً. محلياً في `apps/api/.env` (مستثنى من git ومحجوب عن Claude). في التجربة والإنتاج في AWS Secrets Manager. مفاتيح PayTabs ومزود الفيديو التجريبية تضعها أنت بنفسك في `.env` المحلي.

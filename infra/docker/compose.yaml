@@ -72,9 +72,11 @@ services:
       retries: 10
 
   # Official MinIO images are no longer published; Chainguard builds MinIO from source (see WP-0.1 notes).
+  # Chainguard's free tier only offers `latest`, so the image is pinned by digest
+  # (MinIO RELEASE.2026-09-22T19-25-18Z, pulled 2026-10-10). Update the digest deliberately.
   minio:
     <<: *defaults
-    image: cgr.dev/chainguard/minio:latest
+    image: cgr.dev/chainguard/minio@sha256:7df55d002b698e4494a131b848dd553361bbe58b7e19f62d9623c29af1ba9ccf
     mem_limit: 256m
     cpus: 0.5
     command: ["server", "/data", "--console-address", ":9001"]

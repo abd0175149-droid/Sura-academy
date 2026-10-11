@@ -32,7 +32,7 @@ it('Platform: module policies are discovered by convention', function (): void {
     expect(Gate::getPolicyFor(Widget::class))->toBeInstanceOf(WidgetPolicy::class);
 });
 
-it('Platform: every listed module is registered at boot', function (): void {
+it('Platform: the module list matches the eleven modules of ADR-001', function (): void {
     expect(ModulesServiceProvider::MODULES)->toBe([
         'Identity', 'Families', 'Curriculum', 'Scheduling', 'Live', 'Ledger',
         'Billing', 'Learning', 'Messaging', 'Teachers', 'Platform',

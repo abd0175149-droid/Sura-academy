@@ -17,12 +17,12 @@ No requirement IDs. Each deliverable maps to a test or check instead:
 | Laravel app on PG/Redis, UTC, ar/en | `apps/api/` (`config/app.php`, `.env.example`, `phpunit.xml`) | Pest `Platform: app boots with UTC timezone and ar locale (en fallback)`; `php artisan migrate` on PG |
 | No `sessions` table | `database/migrations/0001_01_01_000000_create_users_table.php` | Pest `Platform: default migrations do not create a sessions table` |
 | Module skeleton ×11 | `app/Modules/<Module>/{Actions,Contracts,Events,Http,Jobs,Models,Policies,Filament}/` | Pest arch `Arch: every module has the standard directories` |
-| `ModulesServiceProvider` | `app/Providers/ModulesServiceProvider.php` | Pest `Platform: module api routes are registered under /api/v1`, `Platform: module policies are discovered by convention` (fixture module in `tests/Fixtures/Modules`) |
+| `ModulesServiceProvider` | `app/Providers/ModulesServiceProvider.php` (module list = `MODULES` constant; see notes T5/T6) | Pest `Platform: module api routes are registered under /api/v1`, `Platform: module policies are discovered by convention` (fixture module in `tests/Fixtures/Modules`) |
 | Cross-module Models ban | `tests/Arch/ModulesTest.php` | Run against a temporary violating class → fails; removed → passes (recorded in notes.md) |
 | Pest + arch, Larastan L8, Pint | `phpstan.neon`, `pint.json` | `verify.sh` gates `api:pint`, `api:phpstan` |
 | ADR-002 packages + versions table | `composer.json/lock`, ADR-002 table | ADR-002 table filled from `composer show` |
 | Laravel Boost | `apps/api/CLAUDE.md` (generated) | `/mcp` shows `laravel-boost` connected; root `.mcp.json` unchanged (`git diff`) |
-| Dart workspace | root `pubspec.yaml`, `analysis_options.yaml`, `apps/family`, `apps/teacher`, `packages/*` (6) | `dart analyze --fatal-infos .`; `flutter test` per app: `family: app renders Arabic RTL shell`, `teacher: app renders Arabic RTL shell`; one trivial test per package |
+| Dart workspace | root `pubspec.yaml`, `analysis_options.yaml`, `apps/family`, `apps/teacher`, `packages/*` (6) | `dart analyze --fatal-infos .`; `flutter test` per app (Arabic RTL and English LTR shell); `sura_core` test only, other packages get tests with their first code (notes T8) |
 | ARB ar/en | `apps/*/lib/l10n/app_{ar,en}.arb` | same widget tests check the localized title under `ar` and `en` |
 | Docker services | `infra/docker/compose.yaml` | `docker compose ... up -d` then `ps` → all healthy |
 | CI | `.github/workflows/ci.yml` | green on the first PR |
@@ -35,7 +35,7 @@ PostgreSQL roles (compose init script): `sura_migrator` (owner, DDL, `CREATEDB` 
 None. CI gets a `contract` job that runs `verify.sh --only contract`. That gate is skipped until `contracts/openapi/sura-api.v1.yaml` exists (WP-1.7).
 
 ## 5. Domain logic
-- `ModulesServiceProvider`: iterates `config('modules.list')`, an explicit list of the 11 names. Explicit beats directory scanning: it is cheap, deterministic, and testable via config override. For each module:
+- `ModulesServiceProvider`: iterates `ModulesServiceProvider::MODULES`, an explicit list of the 11 names (superseded `config('modules.list')`: arch tests need the list before the app boots; see notes T5/T6). Explicit beats directory scanning. For each module:
   - routes: if `Modules/<M>/Http/routes/api.php` exists → `Route::prefix('api/v1')->middleware('api')->group(...)`; if `Http/routes/web.php` exists → `web` group.
   - policies: `Gate::guessPolicyNamesUsing` maps `App\Modules\<M>\Models\<X>` → `App\Modules\<M>\Policies\<X>Policy`, falling back to Laravel's default.
 - Arch tests (`tests/Arch/ModulesTest.php`):
@@ -45,7 +45,7 @@ None. CI gets a `contract` job that runs `verify.sh --only contract`. That gate 
 - Dart dependencies at this stage: `flutter_localizations`, `intl` (apps); `very_good_analysis` (dev, root). Riverpod, go_router, dio, sentry_flutter, and mocktail are added by WP-1.6 / WP-1.7 when first used, to avoid unused-dependency lints.
 
 ## 6. UI (if any)
-Default `flutter create` counter screens are replaced by a minimal shell: `MaterialApp` with `localizationsDelegates`, `supportedLocales: [ar, en]`, `locale: ar`, showing the localized app title. No hardcoded strings. Directional widgets only. No goldens (WP-1.6). Web: `web/index.html` / `flutter_bootstrap.js` sets `fontFallbackBaseUrl` to our own origin (`/fonts/`) and builds with `--no-web-resources-cdn`, so the `web:no-third-party-resources` gate passes.
+Default `flutter create` counter screens are replaced by a minimal shell: `MaterialApp` with `localizationsDelegates`, `supportedLocales: [ar, en]`, `locale: ar`, showing the localized app title. No hardcoded strings. Directional widgets only. No goldens (WP-1.6). Web: `web/index.html` / `flutter_bootstrap.js` sets `fontFallbackBaseUrl` to our own origin (`/fonts/`) and builds with `--no-web-resources-cdn`, so no request leaves our origin. Verified by the runtime gate `web:no-third-party-requests:<app>` (D-34; superseded the grep gate, see notes T9/T10).
 
 ## 7. Security & privacy
 - No secrets in the repo: `.env.example` holds dev-only placeholders. `.env` stays git-ignored and unread by Claude.
@@ -56,7 +56,7 @@ Default `flutter create` counter screens are replaced by a minimal shell: `Mater
 1. **Q1 — App identifiers (needs your decision):** `flutter create --org` sets the iOS/Android bundle ID, which is hard to change after store publication. Proposal: `academy.sura` → `academy.sura.family` / `academy.sura.teacher`. If you own a different domain, tell me.
 2. **Q2 — Ports:** `setup-dev-environment.md` lists default ports (5432…) for local work, while `server-environment.md` §6 (binding) requires the 2xxxx ports on the server. Proposal: one compose file, ports from variables defaulting to the server table (`${SURA_DB_PORT:-25432}` …), and `.env.example` uses the same values. Local and server then behave identically and avoid clashes with anything on Windows. (Guide table update recorded in notes.)
 3. **`verify.sh --only <area>`:** the CI jobs (api, dart, contract, traceability) each call `verify.sh --all`. Without a filter each job would run every gate and need every toolchain. I'll add an optional `--only api|dart|contract|traceability` flag; behavior without it stays unchanged.
-4. Flutter web may still embed `fonts.gstatic.com` in the engine JS even with `fontFallbackBaseUrl`. If the gate fails for that reason only, I'll stop and report rather than weaken the gate.
+4. Flutter web may still embed `fonts.gstatic.com` in the engine JS even with `fontFallbackBaseUrl`. If the gate fails for that reason only, I'll stop and report rather than weaken the gate. → Happened; owner chose a runtime request check (D-34, notes T9/T10).
 5. Filament major version: the "latest stable covered by Laravel Boost guidelines" is checked at install time and recorded in ADR-002 and notes.
 6. API coverage threshold 80% applies under `--all`; the provider and arch tests should cover the little app code there is.
 7. Branch protection on `main` is done by you on GitHub (deliverable 1). I'll list the steps in the demo notes.

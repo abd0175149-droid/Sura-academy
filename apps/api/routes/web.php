@@ -2,8 +2,5 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Route;
-
-Route::get('/', function () {
-    return view('welcome');
-});
+// Public site pages (Blade, resources/views/site) arrive in WP-4.7.
+// Module web routes are mounted by App\Providers\ModulesServiceProvider.
