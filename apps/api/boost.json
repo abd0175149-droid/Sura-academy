@@ -1,0 +1,16 @@
+{
+    "agents": [
+        "claude_code"
+    ],
+    "cloud": false,
+    "guidelines": true,
+    "skills": [
+        "infer-conventions",
+        "fortify-development",
+        "laravel-best-practices",
+        "testing-best-practices",
+        "configuring-horizon",
+        "pennant-development",
+        "tailwindcss-development"
+    ]
+}

@@ -1,0 +1,9 @@
+name: sura_api
+description: "Sura API client generated from the OpenAPI contract, plus auth interceptors."
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+resolution: workspace
