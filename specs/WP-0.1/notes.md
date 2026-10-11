@@ -23,6 +23,7 @@
 - T10: `verify.sh` gained `--only api|contract|dart|traceability`; unknown arguments now exit 2. Gate renamed `web:no-third-party-requests:<app>`.
 - T10: coverage under `--all` was 67.9% (skeleton `User` model and the Horizon gate untested). Added `BaselineSecurityTest` (credentials hidden + hashed; Horizon closed outside local) and a policy-guess negative test → 96.4%. Threshold unchanged at 80.
 - T10: the project hook blocks shell commands containing the literal env-file copy, so `ci.yml` was written with the Write tool.
+- First CI run on PR #2: `api` failed in `composer install` → `package:discover` with "Please provide a valid cache path". The root `.gitignore` (pre-WP-0.1) ignored `apps/api/storage/framework/` and `apps/api/storage/logs/` entirely, so the skeleton's placeholder `.gitignore` files were never committed and a fresh checkout had no `storage/framework/views`. Local runs passed because the folders existed. Fixed by dropping those two lines (Laravel's per-folder `.gitignore` files already ignore the contents); verified on a fresh clone (`composer install` + `verify.sh --all --only api` green) before pushing.
 - T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence
@@ -46,7 +47,7 @@
 | `docker compose ... up -d` → all services healthy | T2: `docker compose -f infra/docker/compose.yaml --profile pdf --profile scan ps` → clamav, gotenberg, mailpit, minio, postgres, redis all `(healthy)` |
 | `php artisan migrate` on local PostgreSQL, no `sessions` table | T3: users, cache, jobs migrations `DONE` on `sura` (PostgreSQL 17.11); `\dt` lists cache, cache_locks, failed_jobs, job_batches, jobs, migrations, password_reset_tokens, users. Test `Platform: default migrations do not create a sessions table` |
 | `flutter build web --wasm --no-web-resources-cdn` for family and teacher | T9: both `✓ Built build/web`; runtime check passes on wasm and JS paths |
-| `verify.sh --all` green; CI green on the first PR | Summary above; CI: see PR checks |
+| `verify.sh --all` green; CI green on the first PR | Summary above. PR #2, CI run 38141108319 at `0856878`: api ✅ (coverage 96.4%), dart ✅ (web check wasm+js both apps), contract ✅, traceability ✅. First run 38140600579 failed in `api` (storage placeholders, see Deviations) |
 | ADR-002 versions table filled | `docs/02-architecture/adr/ADR-002-backend-laravel.md` §الإصدارات المثبتة (19 rows, 2026-10-11) |
 | Tests: arch, example Pest, widget test per app | `tests/Arch/ModulesTest.php` (14), `tests/Feature/Platform/*` (11), `apps/{family,teacher}/test/app/app_test.dart` (2 each), `packages/sura_core/test` (1) |
 
