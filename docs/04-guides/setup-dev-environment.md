@@ -73,20 +73,29 @@
 ## الخدمات المحلية
 
 ```bash
-docker compose -f infra/docker/compose.yaml up -d
+docker compose -f infra/docker/compose.yaml up -d                                  # postgres, redis, mailpit, minio
+docker compose -f infra/docker/compose.yaml --profile pdf --profile scan up -d     # ومعها gotenberg وclamav
 docker compose -f infra/docker/compose.yaml ps
 ```
 
-| الخدمة | المنفذ المحلي | الاستخدام |
-| --- | --- | --- |
-| PostgreSQL 17 | 5432 | قاعدة البيانات |
-| Redis 7 | 6379 | الطوابير والكاش وجلسات الويب |
-| Mailpit | 8025 (واجهة) | معاينة البريد |
-| MinIO | 9001 (واجهة) | بديل S3 |
-| Gotenberg | 3000 | توليد PDF |
-| ClamAV | 3310 | فحص الملفات |
+المنافذ نفسها محلياً وعلى خادم المعاينة (`server-environment.md` §5)، وكلها على `127.0.0.1`. يمكن تغيير أي منفذ بمتغير `SURA_*_PORT` المذكور، ثم تعديل القيمة المقابلة في `apps/api/.env`.
 
-يُنشئ WP-0.1 ملف compose وقيمه الدقيقة.
+| الخدمة | المنفذ المحلي | المتغير | الاستخدام |
+| --- | --- | --- | --- |
+| PostgreSQL 17 | 25432 | `SURA_DB_PORT` | قاعدة البيانات: `sura` للتطوير و`sura_test` للاختبارات، بالدورين `sura_migrator` و`sura_app` |
+| Redis 7 | 26379 | `SURA_REDIS_PORT` | الطوابير والكاش وجلسات الويب، بكلمة مرور |
+| Mailpit | 21025 (SMTP)، 28025 (واجهة) | `SURA_MAIL_PORT`، `SURA_MAIL_UI_PORT` | معاينة البريد |
+| MinIO | 29000 (S3)، 29001 (لوحة) | `SURA_MINIO_PORT`، `SURA_MINIO_CONSOLE_PORT` | بديل S3 (صورة Chainguard، لأن MinIO لم يعد ينشر صوراً رسمية) |
+| Gotenberg | 23000 | `SURA_GOTENBERG_PORT` | توليد PDF (ملف التعريف `pdf`) |
+| ClamAV | 23310 | `SURA_CLAMAV_PORT` | فحص الملفات (ملف التعريف `scan`؛ أول تشغيل يستغرق 5–10 دقائق لتنزيل التواقيع) |
+
+القيم الافتراضية لكلمات المرور في `compose.yaml` و`apps/api/.env.example` للتطوير فقط، وليست أسراراً.
+
+أول تشغيل للـ API:
+
+```bash
+cd apps/api && composer install && cp .env.example .env && php artisan key:generate && php artisan migrate
+```
 
 ## الأسرار
 

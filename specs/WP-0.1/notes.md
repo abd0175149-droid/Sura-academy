@@ -25,11 +25,29 @@
 - T2: ClamAV needs ~5–10 min on first start to download signatures before it reports healthy.
 
 ## Verification evidence
+`bash scripts/verify.sh --all` on 2026-10-11 (WSL, PHP 8.4.26 + pcov, Flutter 3.47.7):
 ```
-(paste verify --all summary)
+──────── verify summary (--all) ────────
+✅ api:pint
+✅ api:phpstan
+✅ api:tests+coverage(80)          (25 tests, 343 assertions, coverage 96.4%)
+✅ dart:format
+✅ dart:analyze
+✅ flutter:test:packages/sura_core
+✅ flutter:test:apps/family
+✅ flutter:test:apps/teacher
+✅ web:no-third-party-requests:apps/family
+✅ web:no-third-party-requests:apps/teacher
+✅ traceability
 ```
 | Acceptance criterion | Evidence |
 | --- | --- |
+| `docker compose ... up -d` → all services healthy | T2: `docker compose -f infra/docker/compose.yaml --profile pdf --profile scan ps` → clamav, gotenberg, mailpit, minio, postgres, redis all `(healthy)` |
+| `php artisan migrate` on local PostgreSQL, no `sessions` table | T3: users, cache, jobs migrations `DONE` on `sura` (PostgreSQL 17.11); `\dt` lists cache, cache_locks, failed_jobs, job_batches, jobs, migrations, password_reset_tokens, users. Test `Platform: default migrations do not create a sessions table` |
+| `flutter build web --wasm --no-web-resources-cdn` for family and teacher | T9: both `✓ Built build/web`; runtime check passes on wasm and JS paths |
+| `verify.sh --all` green; CI green on the first PR | Summary above; CI: see PR checks |
+| ADR-002 versions table filled | `docs/02-architecture/adr/ADR-002-backend-laravel.md` §الإصدارات المثبتة (19 rows, 2026-10-11) |
+| Tests: arch, example Pest, widget test per app | `tests/Arch/ModulesTest.php` (14), `tests/Feature/Platform/*` (11), `apps/{family,teacher}/test/app/app_test.dart` (2 each), `packages/sura_core/test` (1) |
 
 ## Review findings
 | Agent | Severity | Finding | Resolution |
