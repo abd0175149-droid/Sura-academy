@@ -13,5 +13,5 @@ class AppLocalizationsAr extends AppLocalizations {
   String get appTitle => 'أكاديمية سُرى';
 
   @override
-  String get homeSubtitle => 'منطقة الأسرة';
+  String get homeSubtitle => 'تطبيق الأسرة';
 }

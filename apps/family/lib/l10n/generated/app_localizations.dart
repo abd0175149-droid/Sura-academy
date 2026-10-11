@@ -104,10 +104,10 @@ abstract class AppLocalizations {
   /// **'أكاديمية سُرى'**
   String get appTitle;
 
-  /// Which Sura surface this app is, shown under the title on the home screen.
+  /// Which Sura surface this app is, shown centered on the home screen.
   ///
   /// In ar, this message translates to:
-  /// **'منطقة الأسرة'**
+  /// **'تطبيق الأسرة'**
   String get homeSubtitle;
 }
 

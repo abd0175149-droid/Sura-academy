@@ -4,8 +4,8 @@
   "@appTitle": {
     "description": "App name shown in the browser tab and app bar."
   },
-  "homeSubtitle": "منطقة الأسرة",
+  "homeSubtitle": "تطبيق الأسرة",
   "@homeSubtitle": {
-    "description": "Which Sura surface this app is, shown under the title on the home screen."
+    "description": "Which Sura surface this app is, shown centered on the home screen."
   }
 }

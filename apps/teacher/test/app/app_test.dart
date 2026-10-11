@@ -24,6 +24,7 @@ void main() {
       await tester.pumpWidget(const TeacherApp(locale: Locale('en')));
       await tester.pumpAndSettle();
 
+      expect(find.text('Sura Academy'), findsOneWidget);
       expect(find.text('Teacher portal'), findsOneWidget);
       expect(
         Directionality.of(tester.element(find.text('Teacher portal'))),

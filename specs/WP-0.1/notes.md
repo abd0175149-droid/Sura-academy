@@ -52,6 +52,48 @@
 ## Review findings
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
+| traceability-checker | MAJOR | Runtime web gate decided only in notes; WP-1.6 test line still asks for a grep on `gstatic` | Fixed: `D-34` appended to `decisions.md` (Open, owner reply 2026-10-11). Owner to approve and amend the WP-1.6 test line in `phase-1-platform-core.md` |
+| traceability-checker | MINOR | design.md/tasks.md stale (config/modules.php, gate name, trivial tests, T1 command) | Fixed: superseded items annotated |
+| traceability-checker | MINOR | Laravel welcome page (English text) and Bunny `Instrument Sans` font config | Fixed: view, route and font config removed; `/up` health route kept; public site is WP-4.7 |
+| traceability-checker | MINOR | Test name claimed "registered at boot" but compared a constant | Fixed: renamed `the module list matches the eleven modules of ADR-001` |
+| traceability-checker | MINOR | `verify --all` silently skipped the web check without `build/web` | Fixed: `--all` now builds each app (`web:build:<app>`) before the check; CI build step removed |
+| traceability-checker | MINOR | Chromium prerequisite undocumented | Fixed: section «فحص بناء الويب» in `setup-dev-environment.md` |
+| traceability-checker | MINOR | MinIO image `:latest`, unpinned | Fixed: pinned by digest (RELEASE.2026-09-22T19-25-18Z). Substitute image needs owner acknowledgement (in PR) |
+| traceability-checker | MINOR | Fortify guard is temporary; removal instruction only in notes | Deferred: listed under «Handoff» below for WP-1.2 |
+| traceability-checker | MINOR | UI DoD (goldens, rtl-reviewer) | rtl-reviewer run (below); goldens deferred to WP-1.6 per design §6 |
+| traceability-checker | MINOR | Evidence nits (profiles, T1 `i/none`, `ATT-07` in a comment, native labels) | Fixed: demo steps state profiles and ClamAV wait; T1 command; comment uses `<REQ-ID>`. Native labels deferred to the mobile WP |
+| rtl-reviewer | MAJOR | `apple-mobile-web-app-title` was the raw id `family`/`teacher` | Fixed: `أكاديمية سُرى` |
+| rtl-reviewer | MINOR | English meta/manifest descriptions on `lang=ar`; "Family area" vs glossary «تطبيق الأسرة» | Fixed: Arabic descriptions; family subtitle now «تطبيق الأسرة» / "Family app" |
+| rtl-reviewer | MINOR | `orientation: portrait-primary` (WCAG 1.3.4) | Fixed: key removed |
+| rtl-reviewer | MINOR | English test checked only the subtitle; no ARB parity check | Fixed: English title asserted; `Platform: Arabic and English ARB files define the same messages` per app |
+| rtl-reviewer | MINOR | `homeSubtitle` description said "under the title" | Fixed |
+| rtl-reviewer | MINOR | `dir` stays `rtl` when the locale switches to `en` | Deferred to WP-1.6 (language switcher); see Handoff |
+| rtl-reviewer | MINOR | Both apps share the same tab title and `short_name` | Deferred to WP-1.6: needs owner wording; see Handoff |
+| rtl-reviewer | MINOR (risk) | `/fonts/` fallback 404s (Arabic and Latin show as boxes); gate checks origins, not status | Deferred to WP-1.6 (fonts); see Handoff |
+
+## Handoff to later work packages
+- **WP-1.2:** remove `Fortify::ignoreRoutes()` from `AppServiceProvider` and the test `Platform: Fortify auth routes stay unregistered until WP-1.2 wires authentication` when auth routes are wired.
+- **WP-1.3:** replace Horizon's default `viewHorizon` gate (closed outside local, tested in `BaselineSecurityTest`) with the real permission.
+- **WP-1.6:**
+  - Bundle IBM Plex Sans Arabic + Noto Naskh Arabic, set the theme (`letterSpacing: 0`, Arabic line height ≥ 1.6, body ≥ 16px), host the Noto fallback files under `/fonts/` mirroring the `notosansarabic/...` layout, and add a "zero 404 under `/fonts/`" assertion to `scripts/web/check-no-third-party.mjs`.
+  - Sync `document.documentElement.dir` with the active locale; assert `html[lang][dir]` in the web check.
+  - Distinct window titles / `short_name` per app (owner wording), splash, service worker, `ensureSemantics()`, language switcher, real icons and colors (still Flutter defaults).
+  - First goldens should include the AppBar title «أكاديمية سُرى» (damma) at text scale 1.3 and 2.0.
+  - Amend the WP-1.6 test line to the runtime check once D-34 is approved.
+- **WP-1.8:** runtime DB role `sura_app` (local `.env.example` uses `sura_migrator`).
+- **Mobile WP (D-19):** Android `android:label` and iOS `CFBundleDisplayName` are still scaffold strings.
 
 ## خطوات العرض اليدوي
-1. …
+كل الأوامر من جذر المستودع `~/sura-academy` داخل WSL.
+
+1. اجلب الفرع: `git fetch && git switch wp/WP-0.1-repo-bootstrap`.
+2. شغّل الخدمات كلها: `docker compose -f infra/docker/compose.yaml --profile pdf --profile scan up -d`. بدون `--profile` تعمل أربع خدمات فقط (postgres وredis وmailpit وminio).
+3. بعد دقيقة شغّل `docker compose -f infra/docker/compose.yaml --profile pdf --profile scan ps`، وتأكد أن الخدمات الست `(healthy)`. ClamAV يحتاج 5–10 دقائق في أول تشغيل لتنزيل التواقيع.
+4. افتح واجهة البريد http://localhost:28025 ولوحة MinIO http://localhost:29001 (المستخدم `sura-dev`، كلمة المرور `sura-dev-minio`، للتطوير فقط).
+5. جهّز الـ API: `cd apps/api && composer install && cp .env.example .env && php artisan key:generate && php artisan migrate`. يجب أن تنجح ثلاث هجرات (users، cache، jobs) دون جدول `sessions`.
+6. شغّل اختبارات الـ API: `php artisan test`. النتيجة 25 اختباراً ناجحاً، منها اختبارات المعمارية `Arch:` واختبارات `Platform:`.
+7. افتح `php artisan serve --port=28000`، ثم http://localhost:28000/up. يجب أن تظهر صفحة «Application up»، أما `/` فيرد 404 لأن الموقع العام يأتي في WP-4.7.
+8. ارجع إلى الجذر وشغّل كل الفحوص: `npm ci --prefix scripts/web && npx --prefix scripts/web playwright install chromium` (مرة واحدة)، ثم `bash scripts/verify.sh --all`. يجب أن تكون البنود الثلاثة عشر ✅ (يستغرق بضع دقائق لأنه يبني تطبيقي الويب).
+9. اعرض تطبيق الأسرة: `cd apps/family/build/web && python3 -m http.server 27000 --bind 127.0.0.1`، ثم افتح http://127.0.0.1:27000 في Chrome. الصفحة من اليمين إلى اليسار والعنوان في اليمين، **لكن الحروف تظهر مربعات** لأن الخطوط تُضمَّن في WP-1.6 (انظر `specs/WP-0.1/evidence/family-web-before-fonts.png`). افتح أدوات المطوّر ← Network: كل الطلبات إلى 127.0.0.1، ولا شيء إلى Google.
+10. اختبار الفصل بين الوحدات (اختياري): أنشئ صنفاً في `app/Modules/Billing/Actions` يستورد `App\Modules\Ledger\Models\...`، ثم `php artisan test tests/Arch`. يجب أن يفشل، ثم احذف الصنف.
+11. **مطلوب منك على GitHub:** Settings ← Branches ← Add rule لـ `main`: تفعيل «Require a pull request before merging»، و«Require status checks to pass» مع الوظائف `api` و`dart` و`contract` و`traceability`، و«Do not allow force pushes». تُضاف الوظائف إلى القائمة بعد أول تشغيل لـ CI على طلب الدمج.

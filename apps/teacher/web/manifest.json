@@ -5,8 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Sura Academy teacher portal.",
-    "orientation": "portrait-primary",
+    "description": "بوابة المعلمة في أكاديمية سُرى.",
     "prefer_related_applications": false,
     "icons": [
         {

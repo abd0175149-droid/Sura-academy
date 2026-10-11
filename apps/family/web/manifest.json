@@ -1,12 +1,11 @@
 {
-    "name": "أكاديمية سُرى — منطقة الأسرة",
+    "name": "أكاديمية سُرى — تطبيق الأسرة",
     "short_name": "أكاديمية سُرى",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Sura Academy family app: parent area and child mode.",
-    "orientation": "portrait-primary",
+    "description": "تطبيق الأسرة في أكاديمية سُرى: منطقة ولي الأمر ووضع الطفل.",
     "prefer_related_applications": false,
     "icons": [
         {

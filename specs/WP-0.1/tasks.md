@@ -12,4 +12,4 @@ Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command req
 - [x] T8 Dart workspace: root `pubspec.yaml` workspace, shared `analysis_options.yaml` (very_good_analysis), 6 packages with `resolution: workspace`; test in `sura_core` only (notes T8) — verify: `flutter pub get && dart analyze --fatal-infos .`
 - [x] T9 Apps: `flutter create` family (web, ios, android) and teacher (web), gen-l10n with ar/en ARB, RTL shell + widget tests, `fontFallbackBaseUrl` on our origin — verify: `flutter test` in each app; `flutter build web --wasm --no-web-resources-cdn` for both
 - [x] T10 `scripts/verify.sh --only <area>` + runtime web gate (D-34) + `.github/workflows/ci.yml` (api with PG/Redis services, dart, contract, traceability; caches) — verify: `bash scripts/verify.sh --all` green locally; CI green on the PR
-- [ ] T11 Docs: ADR-002 table, notes.md (evidence, demo steps, branch-protection steps), status.md, focus block — verify: `php scripts/check-traceability.php --wp WP-0.1`
+- [x] T11 Docs: ADR-002 table, notes.md (evidence, demo steps, branch-protection steps), status.md, focus block — verify: `php scripts/check-traceability.php --wp WP-0.1`

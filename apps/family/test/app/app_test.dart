@@ -11,9 +11,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('أكاديمية سُرى'), findsOneWidget);
-      expect(find.text('منطقة الأسرة'), findsOneWidget);
+      expect(find.text('تطبيق الأسرة'), findsOneWidget);
       expect(
-        Directionality.of(tester.element(find.text('منطقة الأسرة'))),
+        Directionality.of(tester.element(find.text('تطبيق الأسرة'))),
         TextDirection.rtl,
       );
     });
@@ -24,9 +24,10 @@ void main() {
       await tester.pumpWidget(const FamilyApp(locale: Locale('en')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Family area'), findsOneWidget);
+      expect(find.text('Sura Academy'), findsOneWidget);
+      expect(find.text('Family app'), findsOneWidget);
       expect(
-        Directionality.of(tester.element(find.text('Family area'))),
+        Directionality.of(tester.element(find.text('Family app'))),
         TextDirection.ltr,
       );
     });

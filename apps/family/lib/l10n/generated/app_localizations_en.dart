@@ -13,5 +13,5 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Sura Academy';
 
   @override
-  String get homeSubtitle => 'Family area';
+  String get homeSubtitle => 'Family app';
 }
