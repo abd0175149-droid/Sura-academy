@@ -38,3 +38,7 @@ it('Platform: every listed module is registered at boot', function (): void {
         'Billing', 'Learning', 'Messaging', 'Teachers', 'Platform',
     ]);
 });
+
+it('Platform: classes outside a Models namespace get no guessed policy', function (): void {
+    expect(Gate::getPolicyFor(stdClass::class))->toBeNull();
+});

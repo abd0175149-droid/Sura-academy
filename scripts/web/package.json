@@ -1,0 +1,12 @@
+{
+  "name": "sura-web-checks",
+  "private": true,
+  "description": "Runtime checks for Flutter web builds (ADR-010, constitution Art. 8-9).",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0"
+  }
+}

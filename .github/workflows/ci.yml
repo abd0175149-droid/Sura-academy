@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Every job runs the same gates as local development: scripts/verify.sh --all --only <area>.
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: sura_migrator
+          POSTGRES_PASSWORD: sura-ci
+          POSTGRES_DB: sura_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sura_migrator -d sura_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      # Real environment variables take precedence over the copied env template.
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_USERNAME: sura_migrator
+      DB_PASSWORD: sura-ci
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "null"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pgsql, pdo_pgsql, redis, intl, bcmath, gd
+          coverage: pcov
+          tools: composer:v2
+      - name: Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+        working-directory: apps/api
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('apps/api/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+        working-directory: apps/api
+      - name: Prepare environment from the template
+        run: cp .env.example .env && php artisan key:generate --no-interaction
+        working-directory: apps/api
+      - run: bash scripts/verify.sh --all --only api
+
+  dart:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.7"
+          cache: true
+          pub-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: scripts/web/package-lock.json
+      - name: Resolve the workspace
+        run: flutter pub get
+      - name: Build web apps (ADR-010)
+        run: |
+          for app in apps/family apps/teacher; do
+            (cd "$app" && flutter build web --wasm --no-web-resources-cdn --release)
+          done
+      - name: Install web check tooling
+        run: npm ci --prefix scripts/web --no-audit --no-fund
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/web/package-lock.json') }}
+      - name: Install Chromium for the web check
+        run: npx --prefix scripts/web playwright install --with-deps chromium
+      - run: bash scripts/verify.sh --all --only dart
+
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      # No-op until contracts/openapi/sura-api.v1.yaml exists (WP-1.7).
+      - run: bash scripts/verify.sh --all --only contract
+
+  traceability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          coverage: none
+      - run: bash scripts/verify.sh --all --only traceability
