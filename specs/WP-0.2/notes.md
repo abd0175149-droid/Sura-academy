@@ -52,6 +52,11 @@ Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G
 - Found while writing it: the post hook runs `dart format` before checking, so a `// parental-gate-ok` (or `rtl-ok`) marker must be on the offending line of the *formatted* code; the suite has a case for both shapes. `grep … apps/api/.env` is blocked only because the env-dump rule happens to match `.env` at the end of the command; with output redirected, or via python, reading `.env` is allowed (P-4).
 - Wired as gate `guards` in `verify.sh` (runs under `--all`, or when `.claude/` or the suite changes) and as a CI step in the `traceability` job.
 
+## Audit (T5)
+- `claude doctor` (CLI, 2.1.295): "No installation issues found"; one invalid setting: `.mcp.json › mcpServers.context7: Missing environment variables: CONTEXT7_API_KEY` (→ O-2). The interactive `/doctor` is optional for the owner.
+- Settings and hooks audited against the constitution → `specs/WP-0.2/proposals.md`: P-1…P-5 as ready-to-apply patches (each `git apply --check` clean) plus owner actions O-1 (trust the workspace in the CLI) and O-2 (Context7 key). The hook patch was validated on a patched copy: exactly the 8 known-gap cases flip, nothing else regresses; with the companion suite patch the result is 88/88.
+- `START_HERE.md` §3–§4 rewritten for WSL (D-33); §6 now states that shell writes to protected paths are not blocked yet (P-2) and points to the guard suite.
+
 ## Verification evidence
 ```
 (paste verify --all summary)

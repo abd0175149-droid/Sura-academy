@@ -127,7 +127,7 @@ $preCases = [
     ['SQL TRUNCATE TABLE on the consents table', $w("{$root}/specs/x.sql", $sql('TRUNCATE TABLE', 'consents').';'), 'block', 'append-only', null, null],
     ['SQL with a quoted table name', $w("{$root}/specs/x.sql", $sql('update', '"wallet_entries"').' set x = 1;'), 'block', 'append-only', null, null],
     ['SQL on an ordinary table is allowed', $w("{$root}/specs/x.sql", $sql('UPDATE', 'users').' SET name = 1;'), 'allow', null, null, null],
-    ['query builder write on the ledger table (G5b)', $w("{$root}/apps/api/app/Modules/Ledger/Actions/X.php", "DB::table('credit_ledger_entries')->update(['x' => 1]);"), 'allow', null, null, 'P-3'],
+    ['query builder code passes the pre-hook (checked after writing, see post cases)', $w("{$root}/apps/api/app/Modules/Ledger/Actions/X.php", "DB::table('credit_ledger_entries')->update(['x' => 1]);"), 'allow', null, null, null],
 
     // Bash: git push
     ['force push (G3)', $b('git push --force --dry-run origin HEAD:refs/heads/x'), 'block', 'force-push', null, null],
@@ -150,8 +150,9 @@ $preCases = [
     ['migrate --force', $b('php artisan migrate --force'), 'block', 'CI/CD only', null, null],
     ['migrate is allowed', $b('php artisan migrate'), 'allow', null, null, null],
     ['migrate:fresh on production', $b('php artisan migrate:fresh --env=production'), 'block', 'destructive migration', null, null],
-    ['cat .env', $b('cat apps/api/.env'), 'block', 'reading .env', null, null],
-    ['tail .env.local', $b('tail -n 5 apps/api/.env.local'), 'block', 'reading .env', null, null],
+    ['cat .env', $b('cat apps/api/.env'), 'block', '.env', null, null],
+    ['tail .env.local', $b('tail -n 5 apps/api/.env.local'), 'block', '.env', null, null],
+    ['create .env from the template is allowed', $b('cp -n .env.example .env && php artisan key:generate'), 'allow', null, null, null],
     ['cat .env.example is allowed', $b('cat apps/api/.env.example'), 'allow', null, null, null],
     ['printenv', $b('printenv'), 'block', 'environment variables', null, null],
     ['env piped', $b('env | sort'), 'block', 'environment variables', null, null],
@@ -159,6 +160,9 @@ $preCases = [
     ['terraform apply', $b('terraform apply'), 'block', 'applied by the human', null, null],
     ['SQL via psql on the ledger table', $b('psql -c "'.$sql('DELETE FROM', 'credit_ledger_entries').'"'), 'block', 'append-only', null, null],
     ['ordinary command is allowed', $b('git status --short'), 'allow', null, null, null],
+    ['reading the spec through a pipe is allowed', $b('grep -rn RBAC-01 docs/01-product/spec | head -5'), 'allow', null, null, null],
+    ['reading the spec with stderr discarded is allowed', $b("sed -n '1,20p' docs/01-product/spec/00-priorities-and-baseline-decisions.md 2>/dev/null"), 'allow', null, null, null],
+    ['git status on the spec dir is allowed', $b('git status --short docs/01-product'), 'allow', null, null, null],
 
     // Known gaps and false positives (proposals.md)
     ['Bash redirect into spec (G6)', $b('printf x > docs/01-product/spec/zz.md'), 'allow', null, null, 'P-2'],
@@ -196,6 +200,7 @@ $postCases = [
     ['float in Billing', 'apps/api/app/Modules/Billing/A.php', "<?php function f(float \$x) {}\n", 'block', 'float near money', null],
     ['ledger model mutation', 'apps/api/app/Modules/Ledger/A.php', "<?php CreditLedgerEntry::query()->where('id', 1)->update(['x' => 1]);\n", 'block', 'append-only model', null],
     ['clean php is allowed', 'apps/api/app/Modules/Ledger/A.php', "<?php \$x = 1;\n", 'allow', null, null],
+    ['query builder write on the ledger table, multi-line chain (G5b)', 'apps/api/app/Modules/Ledger/A.php', "<?php\nDB::table('credit_ledger_entries')\n    ->where('id', 1)\n    ->update(['x' => 1]);\n", 'allow', null, 'P-3'],
 ];
 
 // ---------------------------------------------------------------- run
