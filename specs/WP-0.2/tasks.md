@@ -2,7 +2,7 @@
 
 Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command required.
 
-- [ ] T1 Inventory: plugins, MCP servers (CLI + headless init event + laravel-boost handshake), CLAUDE.md, 12 skills, 6 agents → notes.md — verify: `claude plugin list`; `claude mcp list`; headless `claude -p … --output-format stream-json --verbose` init event saved
+- [x] T1 Inventory: plugins, MCP servers (CLI + headless init event + laravel-boost handshake), CLAUDE.md, 12 skills, 6 agents → notes.md — verify: `claude plugin list`; `claude mcp list`; headless `claude -p … --output-format stream-json --verbose` init event saved
 - [ ] T2 Guard attempts G1–G5 (required) and G6 (extra), each with its exact tool result → notes.md — verify: each result matches design §5, or is reported as a finding
 - [ ] T3 Probe cleanup: delete `apps/family/lib/guard_probe.dart` and any probe that got written — verify: `git status --short` shows no probe files
 - [ ] T4 `scripts/test-guards.php` + `verify.sh` gate `guards`: replay recorded tool calls against the hooks, assert block/allow — verify: `php scripts/test-guards.php` green; `bash scripts/verify.sh --all` green
