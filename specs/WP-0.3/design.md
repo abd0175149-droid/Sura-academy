@@ -20,7 +20,7 @@
 | Totals by priority | R1 210 · R2 38 · R3 5 (matches README and traceability.md headers) |
 | README index table, per-file R1/R2/R3 counts | all match |
 | traceability.md rows: priority / spec file / at least one WP | all consistent |
-| Split files 00–21 vs source sections, line by line | identical except the auto-copy `<!-- … -->` header in every file and one figure caption `> **شكل (منقول نصاً …)**` in file 13 (documented in README "ملاحظات النقل") |
+| Split files 00–21 vs source sections, line by line | identical except the auto-copy `<!-- … -->` header in every file and one package note `> **تنبيه الحزمة:** …` at the end of file 13 (Vue/Inertia row replaced by ADR-003; documented in README "ملاحظات النقل"). The three figure captions `> **شكل (منقول نصاً …)**` are in the source too. (Corrected during T3: the preflight probe compared line sets and misread which line was extra.) |
 | WPs in status.md with a definition in phase files | 42 as `### WP-x.y` headings, 8 (WP-6.x, WP-7.1) as table rows |
 
 So the data is already consistent. The gap is that the script checks only part of this: it does not check totals, priority split, README counts, assignment (a row with `—` / `—` passes), the priority/file columns, or the split-vs-source match, and CI runs only `--quick`. This WP turns the probes into permanent checks.
@@ -35,13 +35,13 @@ No requirement IDs are in scope, so no test names start with an ID. The checker 
 | N2 | Totals and R1/R2/R3 split match the `**المجموع:** N متطلباً — R1: a · R2: b · R3: c` line in `spec/README.md` | spec totals | `readme total mismatch`, `readme priority split mismatch` |
 | N3 | Same totals line in `traceability.md` matches | trace totals | `traceability header total mismatch` |
 | N4 | README index table: per-file R1/R2/R3 counts and ID ranges (`ONB-01…14 · PUB-01…12`) equal the IDs actually in that file | README index | `readme per-file count mismatch`, `readme id range mismatch` |
-| N5 | Split vs source: the source file named in README (`../source/<file>.md`) has one `## ` section per split file 00–21; each section equals the split file line by line, ignoring `<!-- … -->` lines and transfer captions `> **شكل (منقول نصاً …`; same requirement ID set. Failure message tells you to record an Open `D-xx` and not hand-fix | split/source | `split row differs from source`, `id only in split`, `id only in source`, `prose differs from source`, `transfer caption ignored` |
+| N5 | Split vs source: the source file named in README (`../source/<file>.md`) has one `## ` section per split file 00–21; each section equals the split file line by line, ignoring `<!-- … -->` lines and package notes `> **تنبيه الحزمة:** …` (counted in the summary line); figure captions are compared like any line; same requirement ID set. Failure message tells you to record an Open `D-xx` and not hand-fix | split/source | `requirement row differs from source`, `id only in split`, `id only in source`, `prose differs from source`, `package note and header comment are ignored`, `package notes are counted in the summary`, `figure caption is compared like any line`, section/README/source-file cases |
 | N6 | Each traceability row: priority column starts with the spec's R-level; spec-file column equals the file holding the ID; at least one of backend/experience is a WP | trace rows | `trace priority differs`, `trace spec file differs`, `row not assigned` |
 | N7 | Every WP in status.md is defined in `phase-*.md` as a `### WP-x.y` heading or a `\| WP-x.y \|` table row (today: any substring match) | WP definitions | `wp mentioned only in prose` |
 | N8 | Every WP in the BR table exists in status.md; BR IDs allowed in test names come from that table (replaces the hard-coded `BR-001…018` regex) | BR table | `br table unknown wp`, `test names unknown br id` |
 | existing | Unmapped spec ID, WP missing from status.md, unknown ID in test names, missing tests for Review/Done WPs (full) and `--wp` | unchanged | `baseline fixture passes`, `unmapped id`, `trace wp missing from status`, `unknown id in test name`, `review wp without tests (full fails, quick passes)` |
 
-Summary line gains the split and source: `requirements: 253 (R1 210 · R2 38 · R3 5) · source: spec-rev24.md (22 sections) · mapped: 253 · work packages: 50 · …`. The unused `$counts` line is removed.
+Summary line gains the split and source: `requirements: 253 (R1 210 · R2 38 · R3 5) · source: spec-rev24.md (22 sections · 1 package note) · mapped: 253 · work packages: 50 · …`. The unused `$counts` line is removed.
 
 ## 3. Data
 None.

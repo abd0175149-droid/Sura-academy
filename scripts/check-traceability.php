@@ -162,6 +162,98 @@ foreach (glob($specDir . '/*.md') ?: [] as $f) {
     }
 }
 
+const PACKAGE_NOTE = '> **تنبيه الحزمة:**';
+
+/** Non-empty trimmed lines [lineNo => text], without what the repository added on transfer: `<!-- … -->`
+ *  provenance headers and `> **تنبيه الحزمة:** …` package notes (spec/README.md, «ملاحظات النقل»). */
+function content_lines(string $text): array
+{
+    $out = [];
+    foreach (explode("\n", $text) as $n => $line) {
+        $line = trim($line);
+        if ($line !== '' && !str_starts_with($line, '<!--') && !str_starts_with($line, PACKAGE_NOTE)) {
+            $out[$n + 1] = $line;
+        }
+    }
+    return $out;
+}
+
+function short(string $s): string
+{
+    return mb_strimwidth($s, 0, 70, '…');
+}
+
+// 1c) The split files equal the source export they were cut from (scripts/split-spec.php), section by section.
+// A difference is the owner's decision, never a hand fix (phase-0-foundation.md, WP-0.3).
+$fixHint = 'record an Open D-xx in docs/00-governance/decisions.md; do not edit the spec by hand';
+$readmeText = is_file($specDir . '/README.md') ? (string) file_get_contents($specDir . '/README.md') : '';
+$sourceName = null;
+$sections = [];
+if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
+    $errors[] = 'spec/README.md does not name the source file (`../source/<file>.md`)';
+} elseif (!is_file($root . '/docs/01-product/source/' . $m[1])) {
+    $errors[] = "source file docs/01-product/source/{$m[1]} does not exist";
+} else {
+    $sourceName = $m[1];
+    foreach (preg_split('/^(?=## )/m', (string) file_get_contents($root . '/docs/01-product/source/' . $sourceName)) as $part) {
+        if (!str_starts_with($part, '## ')) {
+            continue; // title and provenance above the first section
+        }
+        $heading = trim(substr(strstr($part, "\n", true) ?: $part, 3));
+        if (isset($sections[$heading])) {
+            $errors[] = "source ({$sourceName}) has two sections «{$heading}»";
+        }
+        $sections[$heading] = $part;
+    }
+    $sectionFile = [];
+    $packageNotes = 0;
+    foreach (glob($specDir . '/*.md') ?: [] as $f) {
+        $file = basename($f);
+        if ($file === 'README.md' || str_contains($file, '22-learning')) {
+            continue; // the index and the CR proposal are not part of the source
+        }
+        $text = (string) file_get_contents($f);
+        $packageNotes += substr_count($text, "\n" . PACKAGE_NOTE);
+        $split = content_lines($text);
+        $heading = preg_match('/^## (.+)$/', (string) reset($split), $h) ? trim($h[1]) : '?';
+        if (!isset($sections[$heading])) {
+            $errors[] = "{$file}: section «{$heading}» is not in the source ({$sourceName}) — {$fixHint}";
+            continue;
+        }
+        $sectionFile[$heading] = $file;
+        $src = array_values(content_lines($sections[$heading]));
+        $i = 0;
+        foreach ($split as $lineNo => $line) {
+            if (($src[$i] ?? null) !== $line) {
+                $errors[] = "{$file} differs from the source ({$sourceName}) at line {$lineNo}: «" . short($line)
+                    . '» vs source «' . short($src[$i] ?? '(end of section)') . "» — {$fixHint}";
+                continue 2;
+            }
+            $i++;
+        }
+        if ($i < count($src)) {
+            $errors[] = "{$file} differs from the source ({$sourceName}): the source continues with «" . short($src[$i]) . "» — {$fixHint}";
+        }
+    }
+    $sourceIds = [];
+    foreach ($sections as $heading => $text) {
+        if (!isset($sectionFile[$heading])) {
+            $errors[] = "source section «{$heading}» has no split file — {$fixHint}";
+        } elseif (!holds_requirements($sectionFile[$heading])) {
+            continue;
+        }
+        foreach (requirement_rows(table_rows($text)) as [$id]) {
+            $sourceIds[$id] = true;
+        }
+    }
+    foreach (array_keys(array_diff_key($specIds, $sourceIds)) as $id) {
+        $errors[] = "{$id} is in the split spec but not in the source ({$sourceName}) — {$fixHint}";
+    }
+    foreach (array_keys(array_diff_key($sourceIds, $specIds)) as $id) {
+        $errors[] = "{$id} is in the source but not in the split spec ({$sourceName}) — {$fixHint}";
+    }
+}
+
 // 2) Traceability table.
 $trace = [];
 foreach (rows($root . '/docs/03-plan/traceability.md') as $c) {

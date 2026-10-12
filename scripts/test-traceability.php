@@ -176,6 +176,7 @@ function run_checker(string $php, string $checker, string $dir, array $args): ar
     return [proc_close($proc), trim($out."\n".$err)];
 }
 
+$note = "> **تنبيه الحزمة:** صف «الدخول» استُبدل بقرار ADR-099.\n";
 $caption = "> **شكل (منقول نصاً من مخطط الوثيقة): مسار الدخول**\n";
 
 // [name, mutation or null, checker args, expected exit code, fragment the output must contain]
@@ -232,8 +233,12 @@ $cases = [
         'spec/README.md lists 00-intro-old.md, which does not exist'],
 
     // N5 split files vs the source export.
-    ['N5 transfer caption and header comment are ignored', swap(SPEC.'00-intro.md', "## مقدمة\n", "## مقدمة\n\n{$caption}"), ['--quick'], 0,
+    ['N5 package note and header comment are ignored', swap(SPEC.'01-alpha.md', "| ALP-03 | تصدير | وصف التصدير | R2 |\n", "| ALP-03 | تصدير | وصف التصدير | R2 |\n\n{$note}"), ['--quick'], 0,
         '✔ traceability OK'],
+    ['N5 package notes are counted in the summary', swap(SPEC.'01-alpha.md', "| ALP-03 | تصدير | وصف التصدير | R2 |\n", "| ALP-03 | تصدير | وصف التصدير | R2 |\n\n{$note}"), ['--quick'], 0,
+        'source: spec-rev1.md (4 sections · 1 package note)'],
+    ['N5 figure caption is compared like any line', swap(SPEC.'00-intro.md', "## مقدمة\n", "## مقدمة\n\n{$caption}"), ['--quick'], 1,
+        '00-intro.md differs from the source (spec-rev1.md) at line 5'],
     ['N5 requirement row differs from source', swap(SPEC.'01-alpha.md', 'وصف الخروج', 'وصف معدل للخروج'), ['--quick'], 1,
         '01-alpha.md differs from the source (spec-rev1.md) at line 10'],
     ['N5 difference message asks for an Open decision', swap(SPEC.'01-alpha.md', 'وصف الخروج', 'وصف معدل للخروج'), ['--quick'], 1,
