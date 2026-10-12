@@ -5,7 +5,7 @@ Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command req
 Spike gates (spikes are outside `verify.sh` areas): `php spikes/video/token-server/tests/run.php` · `cd spikes/video/app && flutter analyze && flutter test`.
 
 - [x] T1 Token server skeleton + self-test harness: HS256 JWT, role → grants, LiveKit and Zoom token payloads, TTL, join window, access code (tests first: CLS-02/03/04/05/13 cases fail, then pass) — verify: `php spikes/video/token-server/tests/run.php`
-- [ ] T2 Webhooks: LiveKit (JWT + body SHA-256) and Zoom (HMAC `v0:ts:body`, `endpoint.url_validation`) receivers, `events.jsonl`, `AttendanceProbe` minutes with a reconnect (tests first: CLS-09 cases) — verify: `php spikes/video/token-server/tests/run.php`
+- [x] T2 Webhooks: LiveKit (JWT + body SHA-256) and Zoom (HMAC `v0:ts:body`, `endpoint.url_validation`) receivers, `events.jsonl`, `AttendanceProbe` minutes with a reconnect (tests first: CLS-09 cases) — verify: `php spikes/video/token-server/tests/run.php`
 - [ ] T3 Provider admin calls: LiveKit RoomService (list, mute, remove) and room-composite egress to MinIO; Zoom recordings list/download/delete; lock = stop issuing tokens for the room — verify: self-test for request shapes; live check after T9 keys exist
 - [ ] T4 Flutter spike app scaffold (standalone, web/android/ios, ARB ar+en, RTL), join screen, `SpikeVideoClient` interface, token fetch, metrics POST — verify: `cd spikes/video/app && flutter analyze && flutter test && flutter build web --release`
 - [ ] T5 LiveKit client: room grid (4 tiles), mic/camera, teacher panel via server admin, connection policy (audio-only on poor quality), join timer + 20 auto trials, `?bot=` mode — verify: analyze/test green; join a local room with the bot (Playwright)

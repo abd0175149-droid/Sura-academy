@@ -13,7 +13,9 @@ declare(strict_types=1);
  */
 
 use Spike\Video\App;
+use Spike\Video\AttendanceProbe;
 use Spike\Video\Config;
+use Spike\Video\EventLog;
 use Spike\Video\Http\Request;
 use Spike\Video\Http\Response;
 use Spike\Video\Jwt;
@@ -72,7 +74,9 @@ function app(?Config $config = null, ?RoomLocks $locks = null, int $now = NOW): 
 {
     $locks ??= new RoomLocks($GLOBALS['tmp'].'/locks-'.bin2hex(random_bytes(4)).'.json');
 
-    return new App($config ?? config(), $locks, static fn (): int => $now);
+    $events = new EventLog($GLOBALS['tmp'].'/events-'.bin2hex(random_bytes(4)).'.jsonl');
+
+    return new App($config ?? config(), $locks, $events, static fn (): int => $now);
 }
 
 /** POST /token with sensible defaults; returns the Response. */
@@ -116,7 +120,7 @@ function lk(array $issued, int $at = NOW): array
 test('spike jwt round trip and tampered token rejected', function (): void {
     $jwt = Jwt::encode(['sub' => 'a', 'exp' => NOW + 10], 'k');
     same('a', Jwt::decode($jwt, 'k', NOW)['sub'], 'sub');
-    [$h, $p, $s] = explode('.', $jwt);
+    [$h, , $s] = explode('.', $jwt);
     $forged = $h.'.'.rtrim(strtr(base64_encode('{"sub":"b","exp":9999999999}'), '+/', '-_'), '=').'.'.$s;
     foreach ([[$forged, 'k'], [$jwt, 'other-key']] as [$candidate, $key]) {
         try {
@@ -270,6 +274,96 @@ test('spike errors use the unified error shape', function (): void {
     check((bool) preg_match('/^[0-9a-f]{16}$/', $json['request_id']), 'request_id');
     error(app()->handle(new Request('GET', '/nope', [], '')), 404, 'not_found');
     error(app()->handle(new Request('POST', '/token', [], '{not json')), 422, 'validation_failed');
+});
+
+// --- CLS-09 join/leave webhooks → attendance minutes -----------------------------------------
+
+/** A LiveKit webhook request signed the way LiveKit signs it: JWT with the body's SHA-256. */
+function liveKitHook(array $event, string $secret = LK_SECRET, ?string $bodyOverride = null): Request
+{
+    $body = json_encode($event);
+    $jwt = Jwt::encode(['iss' => 'fixture-lk-key', 'nbf' => NOW - 1, 'exp' => NOW + 300, 'sha256' => base64_encode(hash('sha256', $body, true))], $secret);
+
+    return new Request('POST', '/webhooks/livekit', ['authorization' => $jwt, 'content-type' => 'application/webhook+json'], $bodyOverride ?? $body);
+}
+
+/** A Zoom webhook request: x-zm-signature = v0= hex HMAC-SHA256(secret, "v0:{ts}:{body}"). */
+function zoomHook(array $event, int $ts = NOW, string $secret = 'fixture-zoom-webhook-secret'): Request
+{
+    $body = json_encode($event);
+    $signature = 'v0='.hash_hmac('sha256', "v0:{$ts}:{$body}", $secret);
+
+    return new Request('POST', '/webhooks/zoom', ['x-zm-signature' => $signature, 'x-zm-request-timestamp' => (string) $ts], $body);
+}
+
+function events(App $app): array
+{
+    return ok($app->handle(new Request('GET', '/events', ['x-spike-code' => 'fixture-code'], '')));
+}
+
+function webhookApp(): App
+{
+    return app(config(['zoomWebhookSecret' => 'fixture-zoom-webhook-secret']));
+}
+
+test('spike CLS-09 livekit webhook signature verified', function (): void {
+    $app = webhookApp();
+    $joined = ['event' => 'participant_joined', 'id' => 'EV_1', 'createdAt' => (string) NOW,
+        'room' => ['name' => 'spike-room', 'sid' => 'RM_1'],
+        'participant' => ['identity' => 'student-1', 'name' => 'طالب 1', 'sid' => 'PA_1', 'joinedAt' => (string) NOW]];
+    same(200, $app->handle(liveKitHook($joined))->status, 'valid hook accepted');
+    $log = events($app)['events'];
+    same(1, count($log), 'one event stored');
+    same(['provider' => 'livekit', 'type' => 'joined', 'event' => 'participant_joined', 'room' => 'spike-room', 'identity' => 'student-1', 'at' => NOW],
+        array_intersect_key($log[0], array_flip(['provider', 'type', 'event', 'room', 'identity', 'at'])), 'normalized event');
+    check(! str_contains(json_encode($log), 'طالب'), 'display names are not stored');
+});
+
+test('spike CLS-09 livekit tampered body or wrong key rejected', function (): void {
+    $app = webhookApp();
+    $event = ['event' => 'participant_left', 'createdAt' => (string) NOW, 'room' => ['name' => 'spike-room'], 'participant' => ['identity' => 'student-1']];
+    error($app->handle(liveKitHook($event, bodyOverride: json_encode(['event' => 'room_finished']))), 401, 'unauthorized');
+    error($app->handle(liveKitHook($event, 'another-secret-not-real-0000000000')), 401, 'unauthorized');
+    error($app->handle(new Request('POST', '/webhooks/livekit', [], json_encode($event))), 401, 'unauthorized');
+    same([], events($app)['events'], 'nothing stored');
+});
+
+test('spike CLS-09 zoom signature verified and stale timestamp rejected', function (): void {
+    $app = webhookApp();
+    $joined = ['event' => 'session.user_joined', 'event_ts' => NOW * 1000, 'payload' => ['object' => [
+        'session_id' => 'S1', 'session_name' => 'spike-room',
+        'user' => ['id' => '16778240', 'name' => 'معلمة 1', 'user_key' => 'teacher-1', 'join_time' => gmdate('Y-m-d\TH:i:s\Z', NOW)],
+    ]]];
+    same(200, $app->handle(zoomHook($joined))->status, 'valid hook accepted');
+    error($app->handle(zoomHook($joined, NOW - 301)), 401, 'unauthorized');
+    error($app->handle(zoomHook($joined, secret: 'wrong-secret')), 401, 'unauthorized');
+    $log = events($app)['events'];
+    same(1, count($log), 'only the valid hook stored');
+    same(['zoom', 'joined', 'spike-room', 'teacher-1', NOW], [$log[0]['provider'], $log[0]['type'], $log[0]['room'], $log[0]['identity'], $log[0]['at']], 'normalized event');
+});
+
+test('spike CLS-09 zoom url validation answered', function (): void {
+    $r = webhookApp()->handle(zoomHook(['event' => 'endpoint.url_validation', 'payload' => ['plainToken' => 'qgg8vlvZRS6UYooatFL8Aw']]));
+    same([
+        'plainToken' => 'qgg8vlvZRS6UYooatFL8Aw',
+        'encryptedToken' => hash_hmac('sha256', 'qgg8vlvZRS6UYooatFL8Aw', 'fixture-zoom-webhook-secret'),
+    ], ok($r), 'validation answer');
+});
+
+test('spike CLS-09 minutes from join leave pairs with reconnect', function (): void {
+    $e = static fn (string $type, string $who, int $min): array => ['provider' => 'livekit', 'type' => $type, 'room' => 'spike-room', 'identity' => $who, 'at' => NOW + $min * 60];
+    $minutes = AttendanceProbe::minutes([
+        $e('joined', 'teacher-1', 0),
+        $e('joined', 'student-1', 2),
+        $e('left', 'student-1', 20),   // network drop
+        $e('joined', 'student-1', 22), // back after 2 minutes
+        $e('joined', 'student-2', 5),
+        $e('joined', 'student-2', 30), // reconnect: new session joins before the old one leaves
+        $e('left', 'student-2', 30),
+        $e('left', 'student-2', 70),
+        $e('left', 'teacher-1', 75),
+    ], 'spike-room', endAt: NOW + 75 * 60);
+    same(['student-1' => 71.0, 'student-2' => 65.0, 'teacher-1' => 75.0], $minutes, 'minutes per identity (student-1 still in the room at the end)');
 });
 
 // --- runner ----------------------------------------------------------------------------------

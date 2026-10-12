@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 use Spike\Video\App;
 use Spike\Video\Config;
+use Spike\Video\EventLog;
 use Spike\Video\Http\Request;
 use Spike\Video\RoomLocks;
 
@@ -16,5 +17,5 @@ $root = dirname(__DIR__);
 require $root.'/src/autoload.php';
 
 $config = Config::load($root.'/.env', $root.'/var');
-$app = new App($config, new RoomLocks($root.'/var/locks.json'), static fn (): int => time());
+$app = new App($config, new RoomLocks($root.'/var/locks.json'), new EventLog($root.'/var/events.jsonl'), static fn (): int => time());
 $app->handle(Request::fromGlobals())->send();
