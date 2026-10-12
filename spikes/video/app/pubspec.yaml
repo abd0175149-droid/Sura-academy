@@ -1,0 +1,34 @@
+name: sura_video_spike
+description: "WP-0.4 video provider spike (LiveKit vs Zoom). Not product code; never imported by apps/ or packages/."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_zoom_videosdk: ^2.6.0
+  http: ^1.6.0
+  intl: ^0.20.3
+  livekit_client: ^2.13.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+  # Bundled (OFL, assets/fonts/OFL.txt): Flutter web would otherwise show Arabic as boxes or fetch
+  # fonts from a third-party CDN, which the project forbids (ADR-010, child-surfaces rules).
+  fonts:
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-SemiBold.ttf
+          weight: 600
