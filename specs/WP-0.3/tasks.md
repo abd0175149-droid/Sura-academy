@@ -8,4 +8,4 @@ Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command req
 - [x] T4 Checker: N6 trace row consistency, N7 WP definitions, N8 BR table; new summary line; drop dead code — verify: all self-test cases green; `php scripts/check-traceability.php`, `--quick`, `--wp WP-0.3` green on the repo
 - [x] T5 `scripts/verify.sh`: full mode on `--all`, `traceability:selftest` gate; update the checker's usage header — verify: `bash scripts/verify.sh --all --only traceability` green; `bash scripts/verify.sh --all` green
 - [x] T6 Evidence: full-mode output and the split-vs-source result (0 differences, so no D-xx) pasted in notes.md — verify: notes.md acceptance table filled
-- [ ] T7 Close: status.md row + focus block (next WP), notes demo steps, traceability-checker review, PR — verify: `php scripts/check-traceability.php --wp WP-0.3`
+- [x] T7 Close: status.md row + focus block (next WP), notes demo steps, traceability-checker review, PR — verify: `php scripts/check-traceability.php --wp WP-0.3`
