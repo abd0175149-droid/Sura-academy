@@ -2,7 +2,10 @@
 declare(strict_types=1);
 /**
  * Sura Academy traceability checks.
- *   php scripts/check-traceability.php            full: structure + tests for WPs in Review/Done
+ * Structure: the spec's requirement IDs and totals agree with spec/README.md and traceability.md, the split
+ * spec files equal the source export, every ID has one consistent traceability row assigned to a WP, and
+ * every WP named anywhere is in status.md and defined in a phase file. Self-test: scripts/test-traceability.php.
+ *   php scripts/check-traceability.php            full: structure + tests for WPs in Review/Done (verify.sh --all, CI)
  *   php scripts/check-traceability.php --quick    structure + unknown IDs in test names
  *   php scripts/check-traceability.php --wp WP-2.3   structure + tests for that WP's IDs
  *   --root <dir>   check another tree instead of this repository (used by scripts/test-traceability.php)
