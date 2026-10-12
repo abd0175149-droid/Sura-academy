@@ -67,6 +67,17 @@ if ($ext === 'php' && str_starts_with($rel, 'apps/api/app/')) {
     }
 }
 
+// P-3: query-builder writes to append-only tables, matched across lines (Pint splits chains).
+if ($ext === 'php' && preg_match('#^apps/api/(app|database)/#', $rel)) {
+    $appendOnly = 'credit_ledger_entries|audit_logs|wallet_entries|subscription_events|enrollment_history|consents|setting_versions|rule_versions|participant_events|delivery_logs';
+    $src = implode("\n", $lines);
+    if (preg_match_all('/DB::table\(\s*[\'"](' . $appendOnly . ')[\'"]\s*\)(?:(?!;).)*?->(update|delete|truncate|upsert|updateOrInsert|increment|decrement)\(/s', $src, $mm, PREG_OFFSET_CAPTURE)) {
+        foreach ($mm[0] as [$hit, $offset]) {
+            $problems[] = sprintf('%s:%d: DB::table(\'%s\')->…  ->  append-only table mutated through the query builder: write a REVERSAL or a new row (constitution art. 5)', $rel, substr_count($src, "\n", 0, $offset) + 1, $mm[1][0][0]);
+        }
+    }
+}
+
 if ($problems) {
     fwrite(STDERR, "Project checks failed. Fix these before continuing:\n" . implode("\n", array_slice($problems, 0, 30)) . "\n");
     exit(2);
