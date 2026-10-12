@@ -151,9 +151,11 @@ class LiveKitVideoClient extends SpikeVideoClient {
       lk.VideoTrack? video;
       for (final pub in p.videoTrackPublications) {
         final track = pub.track;
+        // Not `pub.enabled`: with adaptive stream a remote track counts as disabled until a view
+        // of it is on screen, so filtering on it would never show (and never receive) the video.
         if (track is lk.VideoTrack &&
             !pub.muted &&
-            (pub is! lk.RemoteTrackPublication || pub.enabled)) {
+            !(pub is lk.RemoteTrackPublication && _policy.audioOnly)) {
           video = track;
           if (pub.source == lk.TrackSource.screenShareVideo) break;
         }

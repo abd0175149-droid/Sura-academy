@@ -9,7 +9,8 @@ import 'trials_screen.dart';
 import 'zoom_factory.dart';
 
 /// Join form. On the web the spike server is the page's own origin; on phones it is typed once.
-/// `?bot=1&code=…&room=…&seat=…&provider=livekit` joins straight away as a camera bot.
+/// `?bot=1&code=…&room=…&seat=…&provider=livekit` joins straight away as a camera bot;
+/// `?auto=trials&code=…&device=…&count=…` runs the join trials headless (tools/bot.mjs --mode trials).
 class JoinScreen extends StatefulWidget {
   const JoinScreen({super.key});
 
@@ -56,6 +57,30 @@ class _JoinScreenState extends State<JoinScreen> {
               request: request,
               bot: true,
               stats: q['stats'] == '1',
+            ),
+          ),
+        );
+      });
+    } else if (kIsWeb && q['auto'] == 'trials') {
+      // Headless baseline from this PC: run the trials as a student without touching the form.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final request = JoinRequest(
+          api: SpikeApi(
+            Uri.base.replace(path: '/', query: ''),
+            q['code'] ?? '',
+          ),
+          provider: q['provider'] ?? 'livekit',
+          role: 'student',
+          seat: int.tryParse(q['seat'] ?? '') ?? 2,
+          room: q['room'] ?? 'spike-room',
+          device: q['device'] ?? 'headless-chromium',
+          network: q['network'] ?? 'normal',
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => TrialsScreen(
+              request: request,
+              count: int.tryParse(q['count'] ?? '') ?? _trialCount,
             ),
           ),
         );

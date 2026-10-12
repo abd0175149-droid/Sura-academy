@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -47,10 +48,12 @@ class _TrialsScreenState extends State<TrialsScreen> {
             })
             .catchError((_) {}),
       );
+      debugPrint('SPIKE_STATUS trial ${jsonEncode(result.toJson())}');
       if (!mounted) return;
       setState(() => _results.add(result));
       await Future<void>.delayed(const Duration(seconds: 2));
     }
+    debugPrint('SPIKE_STATUS trials-done');
   }
 
   @override
@@ -88,6 +91,31 @@ class _TrialsScreenState extends State<TrialsScreen> {
               ),
             ),
             if (!done) const LinearProgressIndicator(),
+            // The remote video is shown, as a student would see it: with LiveKit adaptive stream
+            // a track is only sent to views that are on screen, so "first frame" needs a view.
+            SizedBox(
+              height: 132,
+              child: ValueListenableBuilder<List<SpikeParticipant>>(
+                valueListenable: _client.participants,
+                builder: (context, people, _) => ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsetsDirectional.all(6),
+                  children: [
+                    for (final p in people.where(
+                      (p) => !p.isLocal && p.video != null,
+                    ))
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 6),
+                        child: SizedBox(
+                          width: 160,
+                          height: 120,
+                          child: p.video!(context),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
             Expanded(
               child: ListView(
                 children: [

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -70,6 +71,9 @@ class _RoomScreenState extends State<RoomScreen> {
             })
             .catchError((_) {}),
       );
+    }
+    if (widget.bot) {
+      debugPrint('SPIKE_STATUS join ${jsonEncode(result.toJson())}');
     }
     if (widget.bot && !result.ok && result.connectedMs == null) {
       await Future<void>.delayed(const Duration(seconds: 3));

@@ -1,6 +1,7 @@
 // WP-0.4 Zoom web probe: join a Zoom Video SDK session in the browser and measure tap → first
 // remote video, the same way the Flutter app measures LiveKit. `?bot=1&seat=…&room=…&code=…`
-// joins straight away as a camera bot (headless Chromium with fake devices, tools/bot.mjs).
+// joins straight away as a camera bot (headless Chromium with fake devices, tools/bot.mjs);
+// `?auto=trials&count=…&device=…&seat=…&code=…` runs the trials headless as a student.
 /* global WebVideoSDK, SPIKE_STRINGS */
 'use strict';
 
@@ -12,6 +13,7 @@ const T = SPIKE_STRINGS.ar;
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const isBot = q.get('bot') === '1';
+const isAutoTrials = q.get('auto') === 'trials';
 const TRIALS = 20;
 
 document.querySelectorAll('[data-t]').forEach((el) => { el.textContent = T[el.dataset.t]; });
@@ -19,6 +21,7 @@ for (let i = 1; i <= 9; i++) $('seat').add(new Option(String(i), String(i)));
 $('code').value = q.get('code') || '';
 if (q.get('room')) $('room').value = q.get('room');
 if (q.get('seat')) $('seat').value = q.get('seat');
+if (q.get('device')) $('device').value = q.get('device');
 
 let client = null;
 let stream = null;
@@ -79,6 +82,7 @@ async function join() {
     const self = await stream.attachVideo(client.getCurrentUserInfo().userId, VideoQuality.Video_360P);
     if (self && self.nodeType === 1) $('videos').appendChild(self);
     result.tConnected = ms();
+    console.info(`SPIKE_STATUS connected ${result.tConnected}`);
     $('status').textContent = T.waiting;
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('no remote video in 30s')), isBot ? 3_600_000 : 30_000));
     await Promise.race([firstRemoteVideo(client.getCurrentUserInfo().userId), timeout]);
@@ -88,6 +92,7 @@ async function join() {
     result.error = String(e && (e.reason || e.message || e.type || e));
     $('status').textContent = T.error(result.error);
   }
+  console.info(`SPIKE_STATUS join ${JSON.stringify(result)}`);
   $('host').hidden = !grant || !grant.admin_ticket;
   $('leave').hidden = false;
   return result;
@@ -126,22 +131,27 @@ $('join').addEventListener('click', async () => {
   metric(0, await join(), 'manual');
 });
 
-$('trials20').addEventListener('click', async () => {
-  if (!$('form').reportValidity()) return;
+async function runTrials(count) {
   const times = [];
   $('trials').replaceChildren();
-  for (let i = 1; i <= TRIALS; i++) {
-    $('status').textContent = T.trial(i, TRIALS);
+  for (let i = 1; i <= count; i++) {
+    $('status').textContent = T.trial(i, count);
     const r = await join();
     await leave();
     await metric(i, r, 'auto');
     times.push(r.error ? null : r.tVideo);
+    console.info(`SPIKE_STATUS trial ${JSON.stringify({ trial: i, ...r })}`);
     const li = document.createElement('li');
     li.textContent = r.error ? r.error : T.trialLine((r.tVideo / 1000).toFixed(2), r.tToken, r.tConnected);
     $('trials').appendChild(li);
     await new Promise((res) => setTimeout(res, 2000));
   }
-  $('status').textContent = T.done(times.filter((t) => t !== null).length, TRIALS, percentile(times, 50), percentile(times, 95));
+  $('status').textContent = T.done(times.filter((t) => t !== null).length, count, percentile(times, 50), percentile(times, 95));
+  console.info('SPIKE_STATUS trials-done');
+}
+
+$('trials20').addEventListener('click', () => {
+  if ($('form').reportValidity()) runTrials(TRIALS);
 });
 
 $('leave').addEventListener('click', leave);
@@ -153,7 +163,9 @@ $('record').addEventListener('click', async () => {
   $('record').textContent = recording ? T.recordStop : T.recordStart;
 });
 
-if (isBot) {
+if (isAutoTrials) {
+  runTrials(Number(q.get('count') || TRIALS));
+} else if (isBot) {
   (async function botLoop() {
     const r = await join();
     if (r.error && r.tConnected === null) { await leave(); setTimeout(botLoop, 3000); }

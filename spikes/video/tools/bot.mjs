@@ -4,6 +4,10 @@
 //
 //   node spikes/video/tools/bot.mjs [--provider livekit] [--room spike-room] [--seat 1] [--minutes 120]
 //                                   [--network limited-1.5mbit] [--stats] [--server https://…]
+//   node spikes/video/tools/bot.mjs --mode trials [--count 20] [--device headless-chromium] [--seat 2]
+//
+// --mode trials runs the automatic join trials headless as a student (a camera bot must already be
+// in the room) and exits when they are done. `SPIKE_STATUS` lines from the page go to stdout.
 //
 // --stats appends the app's `SPIKE_STATS` lines (quality, audio-only, received video) to
 // token-server/var/stats-bot-<seat>.jsonl; tools/throttled.sh uses it inside a shaped container.
@@ -28,13 +32,17 @@ const { values } = parseArgs({
     server: { type: 'string', default: 'http://127.0.0.1:27100' },
     network: { type: 'string', default: 'normal' },
     stats: { type: 'boolean', default: false },
+    mode: { type: 'string', default: 'bot' },
+    count: { type: 'string', default: '20' },
+    device: { type: 'string', default: 'headless-chromium' },
   },
 });
 
 const code = JSON.parse(readFileSync(join(here, '..', 'token-server/var/spike.json'), 'utf8')).access_code;
 // Zoom has no Flutter web support, so a Zoom bot runs the JavaScript probe page instead.
 const page0 = values.provider === 'zoom' ? '/zoom-web/' : '/';
-const url = `${values.server}${page0}?bot=1&provider=${encodeURIComponent(values.provider)}&room=${encodeURIComponent(values.room)}&seat=${encodeURIComponent(values.seat)}&network=${encodeURIComponent(values.network)}${values.stats ? '&stats=1' : ''}&code=${encodeURIComponent(code)}`;
+const mode = values.mode === 'trials' ? `auto=trials&count=${encodeURIComponent(values.count)}&device=${encodeURIComponent(values.device)}` : 'bot=1';
+const url = `${values.server}${page0}?${mode}&provider=${encodeURIComponent(values.provider)}&room=${encodeURIComponent(values.room)}&seat=${encodeURIComponent(values.seat)}&network=${encodeURIComponent(values.network)}${values.stats ? '&stats=1' : ''}&code=${encodeURIComponent(code)}`;
 const statsFile = join(here, '..', `token-server/var/stats-bot-${values.seat}.jsonl`);
 
 const browser = await chromium.launch({
@@ -44,14 +52,17 @@ const context = await browser.newContext({ permissions: ['camera', 'microphone']
 const page = await context.newPage();
 page.on('console', (m) => {
   const text = m.text();
-  if (text.startsWith('SPIKE_STATS ')) {
+  if (text.startsWith('SPIKE_STATUS ')) {
+    console.log(`[${values.mode} ${values.seat}] ${text.slice('SPIKE_STATUS '.length)}`);
+    if (text.includes('trials-done')) setTimeout(() => stop(), 500);
+  } else if (text.startsWith('SPIKE_STATS ')) {
     appendFileSync(statsFile, `${text.slice('SPIKE_STATS '.length)}\n`);
   } else if (m.type() === 'error') {
     console.error(`[bot ${values.seat}] ${text}`);
   }
 });
 await page.goto(url);
-console.log(`bot-${values.seat} joining ${values.provider}/${values.room} for ${values.minutes} min`);
+console.log(`${values.mode === 'trials' ? 'student' : 'bot'}-${values.seat} joining ${values.provider}/${values.room} for ${values.minutes} min`);
 
 const stop = async () => {
   await browser.close();
