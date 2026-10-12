@@ -11,17 +11,27 @@ import 'video_client.dart';
 /// The call: up to four video tiles, own mic/camera, and the host panel for teacher/substitute.
 /// A bot (`bot: true`) keeps rejoining so the trials always have a remote video to wait for.
 class RoomScreen extends StatefulWidget {
-  const RoomScreen({required this.request, this.bot = false, super.key});
+  const RoomScreen({
+    required this.request,
+    this.bot = false,
+    this.stats = false,
+    super.key,
+  });
 
   final JoinRequest request;
   final bool bot;
+
+  /// Log `SPIKE_STATS` lines to the console (the throttled participant's evidence).
+  final bool stats;
 
   @override
   State<RoomScreen> createState() => _RoomScreenState();
 }
 
 class _RoomScreenState extends State<RoomScreen> {
-  late final SpikeVideoClient _client = widget.request.createClient();
+  late final SpikeVideoClient _client = widget.request.createClient(
+    log: widget.stats ? debugPrint : null,
+  );
   TokenGrant? _grant;
   TrialResult? _join;
   String? _error;

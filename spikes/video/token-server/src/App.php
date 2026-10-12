@@ -21,6 +21,9 @@ final class App
         private readonly EventLog $events,
         private readonly Closure $clock,
         private readonly HttpClient $http,
+        private readonly ?EventLog $metrics = null,
+        /** @var array<string, string> URL prefix => directory (Flutter web build, Zoom web probe, APK) */
+        private readonly array $staticRoots = [],
     ) {}
 
     public function handle(Request $request): Response
@@ -33,9 +36,12 @@ final class App
                 ['POST', '/webhooks/livekit'] => $this->stored(LiveKitWebhook::receive($request, $this->config, ($this->clock)())),
                 ['POST', '/webhooks/zoom'] => $this->zoomHook($request),
                 ['GET', '/events'] => $this->eventsView($request),
-                default => str_starts_with($request->path, '/admin/') && $request->method === 'POST'
-                    ? $this->admin($request, substr($request->path, strlen('/admin/')))
-                    : throw new ApiError(404, 'not_found'),
+                ['POST', '/metrics'] => $this->metric($request),
+                default => match (true) {
+                    str_starts_with($request->path, '/admin/') && $request->method === 'POST' => $this->admin($request, substr($request->path, strlen('/admin/'))),
+                    $request->method === 'GET' => StaticFiles::serve($this->staticRoots, $request->path),
+                    default => throw new ApiError(404, 'not_found'),
+                },
             };
         } catch (ApiError $e) {
             return self::error($e, $requestId);
@@ -122,6 +128,38 @@ final class App
             })(),
             default => throw new ApiError(404, 'not_found'),
         };
+    }
+
+    /** POST /metrics: one join-time trial (NFR «الدخول للحصة»). Whitelisted fields only, no names. */
+    private function metric(Request $request): Response
+    {
+        $this->requireAccessCode($request);
+        $in = $request->json();
+        $int = static fn (mixed $v): bool => $v === null || (is_int($v) && $v >= 0 && $v < 600_000);
+        $checks = [
+            'provider' => in_array($in['provider'] ?? null, ['livekit', 'zoom', 'zoom-web'], true),
+            'platform' => is_string($in['platform'] ?? null) && preg_match('/^[A-Za-z]{2,12}$/', $in['platform']) === 1,
+            'device' => is_string($in['device'] ?? null) && preg_match('/^[a-z0-9-]{2,30}$/', $in['device']) === 1,
+            'network' => in_array($in['network'] ?? null, ['normal', 'limited-1.5mbit'], true),
+            'role' => is_string($in['role'] ?? null) && Role::tryFrom($in['role']) !== null,
+            'mode' => in_array($in['mode'] ?? null, ['auto', 'manual'], true),
+            'trial' => is_int($in['trial'] ?? null),
+            'ok' => is_bool($in['ok'] ?? null),
+            't_token_ms' => $int($in['t_token_ms'] ?? null),
+            't_connected_ms' => $int($in['t_connected_ms'] ?? null),
+            't_first_video_ms' => $int($in['t_first_video_ms'] ?? null),
+        ];
+        $bad = array_keys(array_filter($checks, static fn (bool $ok): bool => ! $ok));
+        if ($bad !== []) {
+            throw new ApiError(422, 'validation_failed', ['fields' => $bad]);
+        }
+        $row = array_intersect_key($in, $checks + ['room' => true, 'error' => true]);
+        if (isset($row['error'])) {
+            $row['error'] = mb_substr((string) $row['error'], 0, 200);
+        }
+        $this->metrics?->append($row + ['received_at' => ($this->clock)()]);
+
+        return new Response(204);
     }
 
     private function requireAccessCode(Request $request): void

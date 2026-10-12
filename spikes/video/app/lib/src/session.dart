@@ -30,12 +30,15 @@ class JoinRequest {
   Future<TokenGrant> fetchToken() =>
       api.token(provider: provider, role: role, identity: identity, room: room);
 
-  SpikeVideoClient createClient() => switch (provider) {
-    'zoom' =>
-      createZoomClient() ??
-          (throw UnsupportedError('Zoom is not available on this platform')),
-    _ => LiveKitVideoClient(),
-  };
+  SpikeVideoClient createClient({void Function(String line)? log}) =>
+      switch (provider) {
+        'zoom' =>
+          createZoomClient() ??
+              (throw UnsupportedError(
+                'Zoom is not available on this platform',
+              )),
+        _ => LiveKitVideoClient(log: log),
+      };
 
   /// `web`, `android` or `iOS`; the device label tells browsers apart.
   static String get platform => kIsWeb ? 'web' : defaultTargetPlatform.name;

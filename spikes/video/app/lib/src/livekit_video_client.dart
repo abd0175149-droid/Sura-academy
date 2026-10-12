@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
@@ -9,10 +10,14 @@ import 'video_client.dart';
 
 /// LiveKit Cloud through `livekit_client` (web, iOS, Android from one code base).
 class LiveKitVideoClient extends SpikeVideoClient {
-  LiveKitVideoClient({this.publishMedia = true});
+  LiveKitVideoClient({this.publishMedia = true, this.log});
 
   /// Bots and trial runs publish too, like a real student with camera and microphone on.
   final bool publishMedia;
+
+  /// When set, a `SPIKE_STATS {json}` line every 2 s: quality, audio-only, received video per
+  /// participant (CLS-14 evidence from the throttled participant).
+  final void Function(String line)? log;
 
   final _participants = ValueNotifier<List<SpikeParticipant>>(const []);
   final _quality = ValueNotifier<SpikeQuality>(SpikeQuality.unknown);
@@ -22,6 +27,7 @@ class LiveKitVideoClient extends SpikeVideoClient {
   lk.Room? _room;
   lk.EventsListener<lk.RoomEvent>? _listener;
   Timer? _policyTick;
+  Timer? _statsTick;
   bool _cameraWanted = true;
 
   @override
@@ -68,6 +74,12 @@ class LiveKitVideoClient extends SpikeVideoClient {
       const Duration(seconds: 1),
       (_) => _onQuality(_quality.value),
     );
+    if (log != null) {
+      _statsTick = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => unawaited(_logStats()),
+      );
+    }
     _rebuild();
   }
 
@@ -164,10 +176,38 @@ class LiveKitVideoClient extends SpikeVideoClient {
     ];
   }
 
+  Future<void> _logStats() async {
+    final room = _room;
+    final sink = log;
+    if (room == null || sink == null) return;
+    final remote = <Map<String, Object?>>[];
+    for (final p in room.remoteParticipants.values) {
+      for (final pub in p.videoTrackPublications) {
+        final track = pub.track;
+        if (track is! lk.RemoteVideoTrack) continue;
+        final s = await track.getReceiverStats();
+        remote.add({
+          'identity': p.identity,
+          'enabled': pub.enabled,
+          'fps': s?.framesPerSecond,
+          'w': s?.frameWidth,
+          'h': s?.frameHeight,
+          'lost': s?.packetsLost,
+          'bytes': s?.bytesReceived,
+        });
+      }
+    }
+    sink(
+      'SPIKE_STATS ${jsonEncode({'t': DateTime.now().toUtc().toIso8601String(), 'quality': _quality.value.name, 'audio_only': _policy.audioOnly, 'remote_video': remote})}',
+    );
+  }
+
   @override
   Future<void> disconnect() async {
     _policyTick?.cancel();
     _policyTick = null;
+    _statsTick?.cancel();
+    _statsTick = null;
     await _listener?.dispose();
     _listener = null;
     final room = _room;

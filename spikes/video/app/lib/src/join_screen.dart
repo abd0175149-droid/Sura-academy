@@ -52,7 +52,11 @@ class _JoinScreenState extends State<JoinScreen> {
         );
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(
-            builder: (_) => RoomScreen(request: request, bot: true),
+            builder: (_) => RoomScreen(
+              request: request,
+              bot: true,
+              stats: q['stats'] == '1',
+            ),
           ),
         );
       });

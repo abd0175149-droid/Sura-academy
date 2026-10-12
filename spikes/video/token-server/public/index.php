@@ -18,5 +18,17 @@ $root = dirname(__DIR__);
 require $root.'/src/autoload.php';
 
 $config = Config::load($root.'/.env', $root.'/var');
-$app = new App($config, new RoomLocks($root.'/var/locks.json'), new EventLog($root.'/var/events.jsonl'), static fn (): int => time(), new CurlHttpClient());
+$app = new App(
+    $config,
+    new RoomLocks($root.'/var/locks.json'),
+    new EventLog($root.'/var/events.jsonl'),
+    static fn (): int => time(),
+    new CurlHttpClient(),
+    metrics: new EventLog($root.'/var/metrics.jsonl'),
+    staticRoots: [
+        '/' => dirname($root).'/app/build/web',
+        '/zoom-web/' => dirname($root).'/zoom-web',
+        '/downloads/' => dirname($root).'/app/build/app/outputs/flutter-apk',
+    ],
+);
 $app->handle(Request::fromGlobals())->send();

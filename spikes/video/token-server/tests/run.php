@@ -489,6 +489,45 @@ test('spike CLS-10 zoom recordings are listed downloaded and deleted permanently
     same(['DELETE', 'https://api.zoom.us/v2/videosdk/sessions/abc/recordings?action=delete'], [end($http->calls)['method'], end($http->calls)['url']], 'permanent delete');
 });
 
+// --- join-time metrics and static files ------------------------------------------------------
+
+test('spike NFR-join metrics stored without names and only with the access code', function (): void {
+    $file = $GLOBALS['tmp'].'/metrics.jsonl';
+    $app = new App(config(), new RoomLocks($GLOBALS['tmp'].'/l-m.json'), new EventLog($GLOBALS['tmp'].'/e-m.jsonl'), static fn (): int => NOW, new FakeHttp(), metrics: new EventLog($file));
+    $trial = ['provider' => 'livekit', 'platform' => 'web', 'device' => 'ipad-safari', 'network' => 'normal', 'role' => 'student', 'room' => 'spike-room',
+        'trial' => 3, 't_token_ms' => 210, 't_connected_ms' => 1300, 't_first_video_ms' => 2100, 'ok' => true, 'mode' => 'auto', 'name' => 'Sara'];
+    same(204, $app->handle(new Request('POST', '/metrics', ['x-spike-code' => 'fixture-code'], json_encode($trial)))->status, 'stored');
+    error($app->handle(new Request('POST', '/metrics', [], json_encode($trial))), 403, 'forbidden');
+    error($app->handle(new Request('POST', '/metrics', ['x-spike-code' => 'fixture-code'], json_encode(['device' => 'Sara iPad'] + $trial))), 422, 'validation_failed');
+    $stored = json_decode(trim((string) file_get_contents($file)), true);
+    check(! isset($stored['name']), 'unknown fields are dropped');
+    same([2100, 'ipad-safari', NOW], [$stored['t_first_video_ms'], $stored['device'], $stored['received_at']], 'stored fields');
+});
+
+test('spike static files are served from the web build without path traversal', function (): void {
+    $web = $GLOBALS['tmp'].'/web';
+    @mkdir($web.'/assets', 0700, true);
+    file_put_contents($web.'/index.html', '<html>spike</html>');
+    file_put_contents($web.'/main.dart.js', 'js');
+    file_put_contents($GLOBALS['tmp'].'/secret.txt', 'nope');
+    $app = new App(config(), new RoomLocks($GLOBALS['tmp'].'/l-s.json'), new EventLog($GLOBALS['tmp'].'/e-s.jsonl'), static fn (): int => NOW, new FakeHttp(), staticRoots: ['/' => $web]);
+    $index = $app->handle(new Request('GET', '/', [], ''));
+    same([200, '<html>spike</html>'], [$index->status, $index->body], 'index');
+    same('text/html; charset=utf-8', $index->headers['Content-Type'], 'html type');
+    same('text/javascript; charset=utf-8', $app->handle(new Request('GET', '/main.dart.js', [], ''))->headers['Content-Type'], 'js type');
+    error($app->handle(new Request('GET', '/../secret.txt', [], '')), 404, 'not_found');
+    error($app->handle(new Request('GET', '/assets/../../secret.txt', [], '')), 404, 'not_found');
+});
+
+test('spike zoom web probe gets cross-origin isolation headers', function (): void {
+    $probe = $GLOBALS['tmp'].'/zoom-web';
+    @mkdir($probe, 0700, true);
+    file_put_contents($probe.'/index.html', 'zoom');
+    $app = new App(config(), new RoomLocks($GLOBALS['tmp'].'/l-z.json'), new EventLog($GLOBALS['tmp'].'/e-z.jsonl'), static fn (): int => NOW, new FakeHttp(), staticRoots: ['/zoom-web/' => $probe]);
+    $r = $app->handle(new Request('GET', '/zoom-web/', [], ''));
+    same(['same-origin', 'require-corp'], [$r->headers['Cross-Origin-Opener-Policy'] ?? null, $r->headers['Cross-Origin-Embedder-Policy'] ?? null], 'COOP/COEP');
+});
+
 // --- runner ----------------------------------------------------------------------------------
 
 $failed = 0;
