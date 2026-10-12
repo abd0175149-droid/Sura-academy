@@ -22,7 +22,7 @@ bash tools/fetch-zoom-web.sh
 # each session
 bash tools/serve.sh                # prints the https link, the access code and the webhook URLs
 bash tools/minio-egress.sh         # only for LiveKit recording tests
-node tools/bot.mjs --provider livekit --seat 1 &   # keeps a video in the room for the trials
+node tools/bot.mjs --provider livekit --seat 1 --stats &   # keeps a video in the room; logs downstream bitrate
 bash tools/throttled.sh 20 2       # optional: 1.5 Mbit/s participant, stats in token-server/var/
 bash tools/stop.sh                 # afterwards
 ```

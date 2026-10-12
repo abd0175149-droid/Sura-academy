@@ -528,6 +528,33 @@ test('spike zoom web probe gets cross-origin isolation headers', function (): vo
     same(['same-origin', 'require-corp'], [$r->headers['Cross-Origin-Opener-Policy'] ?? null, $r->headers['Cross-Origin-Embedder-Policy'] ?? null], 'COOP/COEP');
 });
 
+// --- results: join-time summary and cost model ------------------------------------------------
+
+test('spike NFR-join summary groups automatic trials and counts failures against p95', function (): void {
+    $rows = [];
+    foreach ([1200, 1500, 900, 2000, 1100, 1300, 1400, 1000, 1600, 1700, 1800, 1900, 2100, 2200, 2300, 2400, 2500, 2600, 2700] as $i => $ms) {
+        $rows[] = ['provider' => 'livekit', 'platform' => 'web', 'device' => 'ipad-safari', 'network' => 'normal', 'mode' => 'auto', 'trial' => $i + 1, 'ok' => true, 't_first_video_ms' => $ms, 't_connected_ms' => $ms - 300, 't_token_ms' => 200];
+    }
+    $rows[] = ['provider' => 'livekit', 'platform' => 'web', 'device' => 'ipad-safari', 'network' => 'normal', 'mode' => 'auto', 'trial' => 20, 'ok' => false, 't_first_video_ms' => null];
+    $rows[] = ['provider' => 'livekit', 'platform' => 'web', 'device' => 'ipad-safari', 'network' => 'normal', 'mode' => 'manual', 'trial' => 0, 'ok' => true, 't_first_video_ms' => 50];
+    $summary = Spike\Video\Results::joinSummary($rows);
+    same(1, count($summary), 'one group (manual joins excluded)');
+    $g = $summary[0];
+    same([20, 19, 1.8, 2.7, true], [$g['n'], $g['ok'], $g['p50_s'], $g['p95_s'], $g['meets_nfr']], 'n, ok, p50, p95, NFR (< 10 s at p95)');
+    $rows[] = ['provider' => 'livekit', 'platform' => 'web', 'device' => 'ipad-safari', 'network' => 'normal', 'mode' => 'auto', 'trial' => 21, 'ok' => false, 't_first_video_ms' => null];
+    same([null, false], [Spike\Video\Results::joinSummary($rows)[0]['p95_s'], Spike\Video\Results::joinSummary($rows)[0]['meets_nfr']], 'two failures in 21 → p95 unmeasurable → NFR not met');
+});
+
+test('spike cost model multiplies the WP-0.4 load literally', function (): void {
+    $load = Spike\Video\Results::load(classes: 100, participants: 4, minutes: 75, sessionsPerMonth: 8);
+    same(['room_minutes' => 60_000, 'participant_minutes' => 240_000], $load, 'load');
+    $zoom = Spike\Video\Results::zoomCost($load, recordedShare: 1.0);
+    same([840.0, 600.0], [$zoom['sessions_usd'], $zoom['recording_usd']], 'zoom: 0.0035/participant-min, 0.01/recorded min');
+    $lk = Spike\Video\Results::liveKitCost($load, recordedShare: 0.0, downMbpsPerParticipant: 1.0, plan: 'ship');
+    same(50.0 + 90_000 * 0.0005, $lk['base_and_minutes_usd'], 'livekit ship: $50 incl. 150k, then $0.0005');
+    same(round((240_000 * 60 * 1.0 / 8 / 1000 - 250) * 0.12, 2), $lk['bandwidth_usd'], 'bandwidth over 250 GB at $0.12/GB');
+});
+
 // --- runner ----------------------------------------------------------------------------------
 
 $failed = 0;
