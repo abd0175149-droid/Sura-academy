@@ -5,13 +5,25 @@ declare(strict_types=1);
  *   php scripts/check-traceability.php            full: structure + tests for WPs in Review/Done
  *   php scripts/check-traceability.php --quick    structure + unknown IDs in test names
  *   php scripts/check-traceability.php --wp WP-2.3   structure + tests for that WP's IDs
+ *   --root <dir>   check another tree instead of this repository (used by scripts/test-traceability.php)
  */
 $root = dirname(__DIR__);
-$args = $argv;
-$quick = in_array('--quick', $args, true);
+$quick = false;
 $wpArg = null;
-if (($i = array_search('--wp', $args, true)) !== false) {
-    $wpArg = $args[$i + 1] ?? null;
+for ($i = 1; $i < $argc; $i++) {
+    match ($argv[$i]) {
+        '--quick' => $quick = true,
+        '--wp' => $wpArg = $argv[++$i] ?? null,
+        '--root' => $root = rtrim($argv[++$i] ?? '', '/'),
+        default => (function () use ($argv, $i): never {
+            fwrite(STDERR, "unknown argument: {$argv[$i]}\n");
+            exit(2);
+        })(),
+    };
+}
+if (!is_dir($root)) {
+    fwrite(STDERR, "--root: not a directory: {$root}\n");
+    exit(2);
 }
 $errors = [];
 $warnings = [];
