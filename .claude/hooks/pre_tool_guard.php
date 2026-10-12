@@ -73,6 +73,15 @@ if (in_array($tool, ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'], true)) {
 
 if ($tool === 'Bash') {
     $cmd = (string) ($ti['command'] ?? '');
+    // P-4: text rules skip a heredoc body only when it is pure data: written by cat/tee, its opening
+    // line ends with at most a `> file` redirect (no pipe, no `;`/`&&`), and it is the last thing in
+    // the command (nothing runs after it). `bash <<EOF`, `cat <<EOF | sh` and `… EOF; bash f.sh`
+    // stay fully scanned.
+    $scan = (string) preg_replace_callback(
+        '/^(.*?\b(?:cat|tee)\b[^\n|;&<]*<<-?[ \t]*([\'"]?)(\w+)\2[ \t]*(?:>>?[ \t]*[^\s|;&]+[ \t]*)?\n).*?\n[ \t]*\3[ \t]*\z/s',
+        static fn (array $m): string => $m[1] . 'HEREDOC_BODY',
+        $cmd,
+    );
     $deny = [
         '/\bgit\s+reset\s+--hard\b/' => 'git reset --hard can destroy work; ask the user',
         '/\bgit\s+(filter-branch|filter-repo)\b/' => 'history rewriting is forbidden',
@@ -80,14 +89,14 @@ if ($tool === 'Bash') {
         '/\bartisan\s+(migrate:fresh|migrate:reset|db:wipe)\b.*--env=(production|staging)/' => 'destructive migration on a shared environment',
         '/\bartisan\s+migrate\b.*--force/' => 'migrate --force is for CI/CD only',
         '/\b(cat|less|more|head|tail|type|bat)\s+[^|;&]*\.env(\.(?!example)\w+)?(\s|$)/' => 'reading .env is forbidden',
-        '/\bprintenv\b|\benv\s*$|\benv\s*\|/' => 'dumping environment variables can leak secrets',
+        '/\bprintenv\b|(^|[;&|]\s*)env\s*($|[|;&])/' => 'dumping environment variables can leak secrets',
         '/\bDROP\s+(DATABASE|SCHEMA)\b/i' => 'dropping databases or schemas is forbidden',
         '/\bterraform\s+(apply|destroy)\b/' => 'infrastructure changes are applied by the human',
     ];
     // git push: no force, and never to main/master in any syntax — except the very first push
     // that creates main on an empty remote (repository bootstrap), which is still behind the
     // "ask" permission in settings.json.
-    if (preg_match('/\bgit\s+push\b(.*)$/s', $cmd, $pm)) {
+    if (preg_match('/\bgit\s+push\b(.*)$/s', $scan, $pm)) {
         $rest = (string) preg_replace('/[;&|].*$/s', '', $pm[1]);
         if (preg_match('/(^|\s)(--force(-with-lease)?|--force-if-includes|-f)(\s|=|$)/', $rest) || preg_match('/(^|\s)\+\S+/', $rest)) {
             block("`{$cmd}` — force-push is forbidden.");
@@ -114,8 +123,21 @@ if ($tool === 'Bash') {
         }
     }
 
+    // P-4: any command touching a real .env file (read or write), except creating it from the template.
+    $envScan = (string) preg_replace('#\bcp\s+(-\w+\s+)*\S*\.env\.example\s+\S*\.env(?=\s|$|[;&|])#', 'cp ENV_TEMPLATE', $scan);
+    if (preg_match('#(^|[\s\'"=:/(])\.env(\.(?!example\b)[\w.-]+)?(?=$|[\s\'")|;&>])#', $envScan)) {
+        block("`{$cmd}` — never read, print or write .env files (only .env.example).");
+    }
+
+    // P-2: writes to human-only paths through the shell (redirects, sed -i, cp/mv/rm, tee, …).
+    $humanOnly = '#(^|[\s\'"=:/])(docs/01-product/(spec|source)/|docs/00-governance/constitution\.md|\.claude/(settings\.json|hooks/)|packages/sura_api/lib/src/generated/)#';
+    $writes = '#(?<![\d&<>=-])>>?(?!&|\s*/dev/null)|\btee\b|\bsed\s+(-\w+\s+)*-\w*i|\bperl\s+-\w*i|\b(cp|mv|rm|rmdir|install|ln|truncate|dd|touch|chmod|unlink|rsync)\b|open\([^)]*,\s*[\'"][wax]#';
+    if (preg_match($humanOnly, $cmd) && preg_match($writes, $cmd)) {
+        block("`{$cmd}` — writes to a human-only path (spec, constitution, Claude settings/hooks, generated code). Propose the change instead.");
+    }
+
     foreach ($deny as $re => $why) {
-        if (preg_match($re, $cmd)) {
+        if (preg_match($re, $scan)) {
             block("`{$cmd}` — {$why}.");
         }
     }
