@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Router for `php -S 127.0.0.1:27100 public/index.php` (see spikes/video/README.md).
+ * Keys: the owner's local key file next to `.env.example`; Claude never reads it.
+ */
+
+use Spike\Video\App;
+use Spike\Video\Config;
+use Spike\Video\Http\Request;
+use Spike\Video\RoomLocks;
+
+$root = dirname(__DIR__);
+require $root.'/src/autoload.php';
+
+$config = Config::load($root.'/.env', $root.'/var');
+$app = new App($config, new RoomLocks($root.'/var/locks.json'), static fn (): int => time());
+$app->handle(Request::fromGlobals())->send();
