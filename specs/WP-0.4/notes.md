@@ -22,6 +22,21 @@
 - Room lock (CLS-04) found during T3: a lock that refused every token also locked out the teacher after a network drop, and with it the only person who can unlock. The lock now refuses non-host roles only (teacher/substitute can rejoin). Worth carrying into WP-3.1.
 - Least privilege in the spike: client tokens carry no `roomAdmin`; moderation goes through the spike server, which checks a server-signed admin ticket (teacher/substitute only).
 
+## Measurements so far
+
+### PC baseline (2026-10-12, headless Chromium on the WSL machine, fake camera, not an owner device)
+Both keys checked without reading the key file: LiveKit RoomService answered 404 `room does not exist` (auth accepted); a Zoom web bot joined a real session (connected in 6.3–6.6 s).
+
+| Provider | Trials | OK | p50 (s) | p95 (s) | Max (s) | p95 < 10 s |
+| --- | --- | --- | --- | --- | --- | --- |
+| LiveKit (Flutter web) | 20 | 20 | 2.04 | 2.14 | 2.28 | yes |
+| Zoom (Web SDK probe) | 20 | 20 | 5.62 | 7.27 | 7.46 | yes |
+
+First LiveKit run was invalid (my bug, kept as `var/metrics-invalid-*.jsonl`): tiles were filtered on `pub.enabled`, which adaptive stream keeps false until a view is on screen, so no video was ever received. Fixed in 7b4bb00; the second run is the one above.
+
+### 1.5 Mbit/s participant, LiveKit (2026-10-12, PC, preliminary)
+Three bots: two on the normal line, one in the `tc`+ifb shaped container (1.5 Mbit/s each way). The shaped bot joined in 1.63 s. Received video went 360p → 180p (simulcast layer switch) and kept 13–20 fps; quality reached "poor" at 16:23:50, the policy switched to audio-only at 16:23:58 (≥ 5 s poor) and back at 16:24:08 (≥ 10 s good). Median received 360p @ 20 fps; downstream 0.56 Mbit/s for two videos. **Caveat:** an unshaped bot reported "poor" at the same moment, so host CPU load (three browsers + container on one machine) confounds this run; the owner-device session decides CLS-14.
+
 ## Verification evidence
 ```
 (paste verify --all summary)
