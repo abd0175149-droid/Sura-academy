@@ -15,7 +15,8 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
-$checker = $root.'/scripts/check-traceability.php';
+// TRACE_CHECKER points at another copy of the checker (used to prove this suite catches a broken check).
+$checker = getenv('TRACE_CHECKER') ?: $root.'/scripts/check-traceability.php';
 $php = PHP_BINARY;
 
 $tmp = sys_get_temp_dir().'/sura-trace-tests-'.getmypid();
@@ -77,6 +78,10 @@ function fixture(): array
         | `22-learning-experience-proposal.md` | مقترح | OUT (مقترحة) | — | — | — |
 
         **المجموع:** 7 متطلباً مرقماً — R1: 4 · R2: 2 · R3: 1. القواعد BR-001…BR-002 في `21-appendices.md`.
+
+        ## ملاحظات النقل
+
+        - `01-alpha.md` يحمل تنبيهاً من الحزمة.
 
         MD;
 
@@ -201,8 +206,29 @@ $cases = [
     ['--wp checks that wp only', null, ['--wp', 'WP-1.2'], 1, 'WP-1.2: GAM-01 has no test'],
     ['--wp with tests passes', null, ['--wp', 'WP-1.1'], 0, '✔ traceability OK'],
     ['--wp unknown', null, ['--wp', 'WP-9.9'], 1, 'unknown work package WP-9.9'],
+    ['--wp without a value', null, ['--wp'], 2, '--wp needs a work package id'],
+    ['--wp with an empty value', null, ['--wp', ''], 2, '--wp needs a work package id'],
+    ['--wp with --quick', null, ['--quick', '--wp', 'WP-1.1'], 2, '--wp cannot be combined with --quick'],
+    ['unknown argument', null, ['--fast'], 2, 'unknown argument: --fast'],
+
+    // Status table: a misspelt status must not silently skip the Review/Done test gate.
+    ['status value outside the vocabulary', swap(STATUS, '| WP-1.1 | الأساس | 1 | W1 | — | Done |', '| WP-1.1 | الأساس | 1 | W1 | — | Reviw |'), [], 1,
+        'WP-1.1: status «Reviw» in status.md is not one of Not started · Design · In progress · Blocked · Review · Done'],
+    ['status value in lower case', swap(STATUS, '| WP-1.1 | الأساس | 1 | W1 | — | Done |', '| WP-1.1 | الأساس | 1 | W1 | — | done |'), [], 1,
+        'WP-1.1: status «done» in status.md is not one of'],
+    ['blocked with a reason is accepted', swap(STATUS, '| WP-2.1 | اللاحق | 2 | W3 | WP-1.2 | Not started |', '| WP-2.1 | اللاحق | 2 | W3 | WP-1.2 | Blocked (حساب تجريبي) |'), [], 0,
+        '✔ traceability OK'],
+    ['duplicate status row', swap(STATUS, "| WP-2.1 | اللاحق |", "| WP-1.1 | الأساس | 1 | W1 | — | Not started | — | — |\n| WP-2.1 | اللاحق |"), [], 1,
+        'duplicate status row WP-1.1 in status.md'],
+    ['status dependency names unknown wp', swap(STATUS, '| W3 | WP-1.2 |', '| W3 | WP-1.2, WP-9.9 |'), ['--quick'], 1,
+        'WP-2.1: dependency WP-9.9 is missing from status.md'],
 
     // N1 duplicate requirement ids in the spec.
+    ['N1 no requirement rows at all', all(
+        swap(SPEC.'01-alpha.md', '| R1 |', '| —  |'), swap(SPEC.'01-alpha.md', '| R2 |', '| —  |'),
+        swap(SPEC.'02-beta.md', '| R1 |', '| —  |'), swap(SPEC.'02-beta.md', '| R2 |', '| —  |'), swap(SPEC.'02-beta.md', '| R3 |', '| —  |'),
+        swap(SPEC.'02-beta.md', '| R1 احتساب، R2 سير كامل |', '| —  |'),
+    ), ['--quick'], 1, 'no requirement rows found under docs/01-product/spec'],
     ['N1 duplicate id in spec files', swap(SPEC.'02-beta.md', "| BET-01 | عرض |", "| ALP-01 | مكرر | وصف | R1 |\n| BET-01 | عرض |"), ['--quick'], 1,
         'duplicate requirement id ALP-01 (01-alpha.md, 02-beta.md)'],
 
@@ -225,6 +251,8 @@ $cases = [
         'spec/README.md: 01-alpha.md range lists ALP-04, not in the file'],
     ['N4 file id outside readme range', swap(README, 'GAM-01…02', 'GAM-01…01'), ['--quick'], 1,
         'spec/README.md: 02-beta.md has GAM-02, outside its listed ranges'],
+    ['N4 readme count unparseable', swap(README, '| ALP-01…03 | 2 | 1 | — |', '| ALP-01…03 | اثنان | 1 | — |'), ['--quick'], 1,
+        'spec/README.md: cannot read R1 count «اثنان» for 01-alpha.md'],
     ['N4 readme range unparseable', swap(README, 'ALP-01…03', 'ALP-01..03'), ['--quick'], 1,
         'spec/README.md: cannot read id range «ALP-01..03» for 01-alpha.md'],
     ['N4 spec file not in readme index', swap(README, "| `02-beta.md` | بيتا | BET-01…02 · GAM-01…02 | 2 | 1 | 1 |\n", ''), ['--quick'], 1,
@@ -237,6 +265,14 @@ $cases = [
         '✔ traceability OK'],
     ['N5 package notes are counted in the summary', swap(SPEC.'01-alpha.md', "| ALP-03 | تصدير | وصف التصدير | R2 |\n", "| ALP-03 | تصدير | وصف التصدير | R2 |\n\n{$note}"), ['--quick'], 0,
         'source: spec-rev1.md (4 sections · 1 package note)'],
+    ['N5 package note in a file the readme does not mention', swap(SPEC.'02-beta.md', "| GAM-02 | ألعاب | وصف الألعاب | R2 |\n", "| GAM-02 | ألعاب | وصف الألعاب | R2 |\n\n{$note}"), ['--quick'], 1,
+        '02-beta.md has a package note (> **تنبيه الحزمة:**) that spec/README.md «ملاحظات النقل» does not mention'],
+    ['N5 comment below the heading is compared like any line', swap(SPEC.'01-alpha.md', "متطلبات الدخول والخروج.\n", "متطلبات الدخول والخروج.\n<!-- ملاحظة مضافة -->\n"), ['--quick'], 1,
+        '01-alpha.md differs from the source (spec-rev1.md) at line 6'],
+    ['N5 split file truncated', swap(SPEC.'01-alpha.md', "| ALP-03 | تصدير | وصف التصدير | R2 |\n", ''), ['--quick'], 1,
+        '01-alpha.md differs from the source (spec-rev1.md): the source continues with «| ALP-03 | تصدير | وصف التصدير | R2 |»'],
+    ['N5 duplicate source section', swap(SOURCE, '## الملاحق', "## مقدمة\n\nنص مكرر.\n\n## الملاحق"), ['--quick'], 1,
+        'source (spec-rev1.md) has two sections «مقدمة»'],
     ['N5 figure caption is compared like any line', swap(SPEC.'00-intro.md', "## مقدمة\n", "## مقدمة\n\n{$caption}"), ['--quick'], 1,
         '00-intro.md differs from the source (spec-rev1.md) at line 5'],
     ['N5 requirement row differs from source', swap(SPEC.'01-alpha.md', 'وصف الخروج', 'وصف معدل للخروج'), ['--quick'], 1,
@@ -265,6 +301,8 @@ $cases = [
         'ALP-03: traceability names 02-beta.md; the spec has it in 01-alpha.md'],
     ['N6 row assigned to no work package', swap(TRACE, '| BET-01 | R1 | عرض | — | WP-1.2 |', '| BET-01 | R1 | عرض | — | — |'), ['--quick'], 1,
         'BET-01 is not assigned to any work package'],
+    ['N6 trace row with the wrong cell count', swap(TRACE, '| ALP-02 | R1 |', "| ZZZ-01 | R1 | قديم | WP-1.1 | — | `01-alpha.md` | — | زائد |\n| ALP-02 | R1 |"), ['--quick'], 1,
+        'docs/03-plan/traceability.md: cannot read row ZZZ-01 (8 cells; requirement rows have 7)'],
     ['N6 trace row for an id not in the spec', swap(TRACE, '| ALP-02 | R1 |', "| ALP-09 | R1 | قديم | WP-1.1 | — | `01-alpha.md` | — |\n| ALP-02 | R1 |"), ['--quick'], 1,
         'ALP-09 is in docs/03-plan/traceability.md but not in the spec'],
 
@@ -275,6 +313,16 @@ $cases = [
     // N8 business rules table.
     ['N8 br table names unknown wp', swap(TRACE, '| BR-002 | WP-1.2, WP-2.1 |', '| BR-002 | WP-1.2, WP-9.9 |'), ['--quick'], 1,
         'BR-002: work package WP-9.9 is missing from status.md'],
+    ['N8 br row unreadable', swap(TRACE, '| BR-001 | WP-1.1 |', '| BR-001 | WP-1.1 | زائد |'), ['--quick'], 1,
+        'docs/03-plan/traceability.md: cannot read business-rule row BR-001'],
+    ['N8 br row with a non-wp cell', swap(TRACE, '| BR-001 | WP-1.1 |', '| BR-001 | لاحقاً |'), ['--quick'], 1,
+        'cannot read business-rule row BR-001'],
+    ['N8 br rule missing from the table', swap(TRACE, "| BR-002 | WP-1.2, WP-2.1 |\n", ''), ['--quick'], 1,
+        'BR-002 (spec/README.md range) has no row in the business-rules table'],
+    ['N8 br rule outside the readme range', swap(TRACE, "| BR-002 | WP-1.2, WP-2.1 |\n", "| BR-002 | WP-1.2, WP-2.1 |\n| BR-003 | WP-2.1 |\n"), ['--quick'], 1,
+        'BR-003 in docs/03-plan/traceability.md is outside the spec/README.md range BR-001…BR-002'],
+    ['N8 readme states no br range', swap(README, 'القواعد BR-001…BR-002', 'القواعد'), ['--quick'], 1,
+        'spec/README.md does not state the business-rule range'],
     ['N8 test name with br id outside the table', put(TESTS, "<?php\n\nit('ALP-01 signs the parent in', function () {});\n\ntest('BR-003 rule holds', function () {});\n"), ['--quick'], 1,
         'test name references unknown requirement id BR-003'],
 ];

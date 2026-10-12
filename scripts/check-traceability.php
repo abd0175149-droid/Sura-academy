@@ -16,7 +16,7 @@ $wpArg = null;
 for ($i = 1; $i < $argc; $i++) {
     match ($argv[$i]) {
         '--quick' => $quick = true,
-        '--wp' => $wpArg = $argv[++$i] ?? null,
+        '--wp' => $wpArg = $argv[++$i] ?? '',
         '--root' => $root = rtrim($argv[++$i] ?? '', '/'),
         default => (function () use ($argv, $i): never {
             fwrite(STDERR, "unknown argument: {$argv[$i]}\n");
@@ -26,6 +26,14 @@ for ($i = 1; $i < $argc; $i++) {
 }
 if (!is_dir($root)) {
     fwrite(STDERR, "--root: not a directory: {$root}\n");
+    exit(2);
+}
+if ($wpArg !== null && !preg_match('/^WP-\d+\.\d+$/', $wpArg)) {
+    fwrite(STDERR, "--wp needs a work package id such as WP-2.3\n");
+    exit(2);
+}
+if ($wpArg !== null && $quick) {
+    fwrite(STDERR, "--wp cannot be combined with --quick (--quick skips the test check)\n");
     exit(2);
 }
 $errors = [];
@@ -166,18 +174,25 @@ foreach (glob($specDir . '/*.md') ?: [] as $f) {
 
 const PACKAGE_NOTE = '> **تنبيه الحزمة:**';
 
-/** Non-empty trimmed lines [lineNo => text], without what the repository added on transfer: `<!-- … -->`
- *  provenance headers and `> **تنبيه الحزمة:** …` package notes (spec/README.md, «ملاحظات النقل»). */
+/** Non-empty trimmed lines [lineNo => text], without what the repository added on transfer: the `<!-- … -->`
+ *  provenance header above the first heading, and `> **تنبيه الحزمة:** …` package notes (spec/README.md,
+ *  «ملاحظات النقل»). A comment anywhere else is content. */
 function content_lines(string $text): array
 {
     $out = [];
     foreach (explode("\n", $text) as $n => $line) {
         $line = trim($line);
-        if ($line !== '' && !str_starts_with($line, '<!--') && !str_starts_with($line, PACKAGE_NOTE)) {
-            $out[$n + 1] = $line;
+        if ($line === '' || ($out === [] && str_starts_with($line, '<!--')) || str_starts_with($line, PACKAGE_NOTE)) {
+            continue;
         }
+        $out[$n + 1] = $line;
     }
     return $out;
+}
+
+function package_notes(string $text): int
+{
+    return count(array_filter(explode("\n", $text), fn ($l) => str_starts_with(trim($l), PACKAGE_NOTE)));
 }
 
 function short(string $s): string
@@ -198,6 +213,7 @@ if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
     $errors[] = "source file docs/01-product/source/{$m[1]} does not exist";
 } else {
     $sourceName = $m[1];
+    $transferNotes = (string) strstr($readmeText, '## ملاحظات النقل');
     foreach (preg_split('/^(?=## )/m', (string) file_get_contents($root . '/docs/01-product/source/' . $sourceName)) as $part) {
         if (!str_starts_with($part, '## ')) {
             continue; // title and provenance above the first section
@@ -215,7 +231,10 @@ if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
             continue; // the index and the CR proposal are not part of the source
         }
         $text = (string) file_get_contents($f);
-        $packageNotes += substr_count($text, "\n" . PACKAGE_NOTE);
+        if (($notes = package_notes($text)) > 0 && !str_contains($transferNotes, "`{$file}`")) {
+            $errors[] = "{$file} has a package note (" . PACKAGE_NOTE . ") that spec/README.md «ملاحظات النقل» does not mention — {$fixHint}";
+        }
+        $packageNotes += $notes;
         $split = content_lines($text);
         $heading = preg_match('/^## (.+)$/', (string) reset($split), $h) ? trim($h[1]) : '?';
         if (!isset($sections[$heading])) {
@@ -261,11 +280,21 @@ if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
 $trace = [];
 $rules = [];
 foreach (rows($root . '/docs/03-plan/traceability.md') as $c) {
-    if (count($c) === 2 && preg_match('/^BR-\d{3}$/', $c[0])) {
-        $rules[$c[0]] = preg_split('/\s*,\s*/', $c[1]);
+    if (preg_match('/^BR-\d{3}$/', $c[0])) {
+        $wps = count($c) === 2 ? preg_split('/\s*,\s*/', $c[1]) : [];
+        if ($wps === [] || preg_grep('/^WP-\d+\.\d+$/', $wps, PREG_GREP_INVERT)) {
+            $errors[] = "docs/03-plan/traceability.md: cannot read business-rule row {$c[0]} (expected `| {$c[0]} | WP-x.y, WP-x.y |`)";
+        }
+        $rules[$c[0]] = preg_grep('/^WP-\d+\.\d+$/', $wps);
         continue;
     }
-    if (count($c) !== 7 || !preg_match('/^[A-Z]{2,5}-\d{2,3}$/', $c[0])) {
+    if (!preg_match('/^[A-Z]{2,5}-\d{2,3}$/', $c[0])) {
+        continue;
+    }
+    if (count($c) !== 7) {
+        if (count($c) !== 5) { // 5 cells: the CR proposal table
+            $errors[] = "docs/03-plan/traceability.md: cannot read row {$c[0]} (" . count($c) . ' cells; requirement rows have 7)';
+        }
         continue;
     }
     [$id, $prio, , $backend, $experience, $file] = $c;
@@ -292,12 +321,47 @@ foreach ($specIds as $id => $file) {
         $errors[] = "{$id} ({$file}) is not mapped in docs/03-plan/traceability.md";
     }
 }
+// The business-rules table covers exactly the range spec/README.md states (BR-001…BR-0xx).
+if (!preg_match('/BR-(\d{3})…BR-(\d{3})/u', $readmeText, $m)) {
+    $errors[] = 'spec/README.md does not state the business-rule range (BR-001…BR-0xx)';
+} else {
+    $stated = [];
+    for ($n = (int) $m[1]; $n <= (int) $m[2]; $n++) {
+        $stated[sprintf('BR-%03d', $n)] = true;
+    }
+    foreach (array_keys(array_diff_key($stated, $rules)) as $rule) {
+        $errors[] = "{$rule} (spec/README.md range) has no row in the business-rules table of docs/03-plan/traceability.md";
+    }
+    foreach (array_keys(array_diff_key($rules, $stated)) as $rule) {
+        $errors[] = "{$rule} in docs/03-plan/traceability.md is outside the spec/README.md range BR-{$m[1]}…BR-{$m[2]}";
+    }
+}
 
-// 3) Status table and phase files.
+// 3) Status table and phase files. The status vocabulary is status.md's «قواعد التحديث» line; the test gate
+// below keys on Review/Done, so a misspelt status must fail rather than silently skip the gate.
+const STATUSES = ['Not started', 'Design', 'In progress', 'Blocked', 'Review', 'Done'];
 $status = [];
+$dependsOn = [];
 foreach (rows($root . '/docs/03-plan/status.md') as $c) {
-    if (count($c) >= 6 && preg_match('/^WP-\d+\.\d+$/', $c[0])) {
-        $status[$c[0]] = $c[5];
+    if (count($c) < 6 || !preg_match('/^WP-\d+\.\d+$/', $c[0])) {
+        continue;
+    }
+    [$wp, , , , $deps, $state] = $c;
+    if (isset($status[$wp])) {
+        $errors[] = "duplicate status row {$wp} in status.md";
+    }
+    if (!in_array($state, STATUSES, true) && !str_starts_with($state, 'Blocked')) {
+        $errors[] = "{$wp}: status «{$state}» in status.md is not one of " . implode(' · ', STATUSES);
+    }
+    $status[$wp] = $state;
+    $dependsOn[$wp] = $deps;
+}
+foreach ($dependsOn as $wp => $deps) {
+    preg_match_all('/WP-\d+\.\d+/', $deps, $m);
+    foreach ($m[0] as $dep) {
+        if (!isset($status[$dep])) {
+            $errors[] = "{$wp}: dependency {$dep} is missing from status.md";
+        }
     }
 }
 $phaseText = implode("\n", array_map('file_get_contents', glob($root . '/docs/03-plan/phase-*.md') ?: []));
@@ -356,7 +420,7 @@ foreach (array_keys($testIndex) as $id) {
 }
 
 if (!$quick) {
-    $targetWps = $wpArg ? [$wpArg] : array_keys(array_filter($status, fn ($s) => in_array($s, ['Review', 'Done'], true)));
+    $targetWps = $wpArg !== null ? [$wpArg] : array_keys(array_filter($status, fn ($s) => in_array($s, ['Review', 'Done'], true)));
     foreach ($targetWps as $wp) {
         if (!isset($status[$wp])) {
             $errors[] = "unknown work package {$wp}";

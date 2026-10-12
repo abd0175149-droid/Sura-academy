@@ -41,6 +41,8 @@ No requirement IDs are in scope, so no test names start with an ID. The checker 
 | N8 | Every WP in the BR table exists in status.md; BR IDs allowed in test names come from that table (replaces the hard-coded `BR-001…018` regex) | BR table | `br table unknown wp`, `test names unknown br id` |
 | existing | Unmapped spec ID, WP missing from status.md, unknown ID in test names, missing tests for Review/Done WPs (full) and `--wp` | unchanged | `baseline fixture passes`, `unmapped id`, `trace wp missing from status`, `unknown id in test name`, `review wp without tests (full fails, quick passes)` |
 
+Added after the traceability-checker review (notes.md, "Review findings"): business-rule rows must be readable and cover the `BR-001…BR-0xx` range stated in `spec/README.md` exactly; status values must come from status.md's vocabulary, with no duplicate rows, and «يعتمد على» WPs must exist; `--wp` needs a value and cannot be combined with `--quick`; a `<!--` comment is ignored only above the first heading; a package note must be named in README «ملاحظات النقل»; ID-shaped traceability rows with an unexpected cell count fail.
+
 Summary line gains the split and source: `requirements: 253 (R1 210 · R2 38 · R3 5) · source: spec-rev24.md (22 sections · 1 package note) · mapped: 253 · work packages: 50 · …`. The unused `$counts` line is removed.
 
 ## 3. Data
