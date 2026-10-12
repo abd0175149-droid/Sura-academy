@@ -1,0 +1,78 @@
+--- a/.claude/hooks/pre_tool_guard.php
++++ b/.claude/hooks/pre_tool_guard.php
+@@ -73,6 +73,15 @@
+ 
+ if ($tool === 'Bash') {
+     $cmd = (string) ($ti['command'] ?? '');
++    // P-4: text rules skip a heredoc body only when it is pure data: written by cat/tee, its opening
++    // line ends with at most a `> file` redirect (no pipe, no `;`/`&&`), and it is the last thing in
++    // the command (nothing runs after it). `bash <<EOF`, `cat <<EOF | sh` and `… EOF; bash f.sh`
++    // stay fully scanned.
++    $scan = (string) preg_replace_callback(
++        '/^(.*?\b(?:cat|tee)\b[^\n|;&<]*<<-?[ \t]*([\'"]?)(\w+)\2[ \t]*(?:>>?[ \t]*[^\s|;&]+[ \t]*)?\n).*?\n[ \t]*\3[ \t]*\z/s',
++        static fn (array $m): string => $m[1] . 'HEREDOC_BODY',
++        $cmd,
++    );
+     $deny = [
+         '/\bgit\s+reset\s+--hard\b/' => 'git reset --hard can destroy work; ask the user',
+         '/\bgit\s+(filter-branch|filter-repo)\b/' => 'history rewriting is forbidden',
+@@ -80,14 +89,14 @@
+         '/\bartisan\s+(migrate:fresh|migrate:reset|db:wipe)\b.*--env=(production|staging)/' => 'destructive migration on a shared environment',
+         '/\bartisan\s+migrate\b.*--force/' => 'migrate --force is for CI/CD only',
+         '/\b(cat|less|more|head|tail|type|bat)\s+[^|;&]*\.env(\.(?!example)\w+)?(\s|$)/' => 'reading .env is forbidden',
+-        '/\bprintenv\b|\benv\s*$|\benv\s*\|/' => 'dumping environment variables can leak secrets',
++        '/\bprintenv\b|(^|[;&|]\s*)env\s*($|[|;&])/' => 'dumping environment variables can leak secrets',
+         '/\bDROP\s+(DATABASE|SCHEMA)\b/i' => 'dropping databases or schemas is forbidden',
+         '/\bterraform\s+(apply|destroy)\b/' => 'infrastructure changes are applied by the human',
+     ];
+     // git push: no force, and never to main/master in any syntax — except the very first push
+     // that creates main on an empty remote (repository bootstrap), which is still behind the
+     // "ask" permission in settings.json.
+-    if (preg_match('/\bgit\s+push\b(.*)$/s', $cmd, $pm)) {
++    if (preg_match('/\bgit\s+push\b(.*)$/s', $scan, $pm)) {
+         $rest = (string) preg_replace('/[;&|].*$/s', '', $pm[1]);
+         if (preg_match('/(^|\s)(--force(-with-lease)?|--force-if-includes|-f)(\s|=|$)/', $rest) || preg_match('/(^|\s)\+\S+/', $rest)) {
+             block("`{$cmd}` — force-push is forbidden.");
+@@ -114,8 +123,21 @@
+         }
+     }
+ 
++    // P-4: any command touching a real .env file (read or write), except creating it from the template.
++    $envScan = (string) preg_replace('#\bcp\s+(-\w+\s+)*\S*\.env\.example\s+\S*\.env(?=\s|$|[;&|])#', 'cp ENV_TEMPLATE', $scan);
++    if (preg_match('#(^|[\s\'"=:/(])\.env(\.(?!example\b)[\w.-]+)?(?=$|[\s\'")|;&>])#', $envScan)) {
++        block("`{$cmd}` — never read, print or write .env files (only .env.example).");
++    }
++
++    // P-2: writes to human-only paths through the shell (redirects, sed -i, cp/mv/rm, tee, …).
++    $humanOnly = '#(^|[\s\'"=:/])(docs/01-product/(spec|source)/|docs/00-governance/constitution\.md|\.claude/(settings\.json|hooks/)|packages/sura_api/lib/src/generated/)#';
++    $writes = '#(?<![\d&<>=-])>>?(?!&|\s*/dev/null)|\btee\b|\bsed\s+(-\w+\s+)*-\w*i|\bperl\s+-\w*i|\b(cp|mv|rm|rmdir|install|ln|truncate|dd|touch|chmod|unlink|rsync)\b|open\([^)]*,\s*[\'"][wax]#';
++    if (preg_match($humanOnly, $cmd) && preg_match($writes, $cmd)) {
++        block("`{$cmd}` — writes to a human-only path (spec, constitution, Claude settings/hooks, generated code). Propose the change instead.");
++    }
++
+     foreach ($deny as $re => $why) {
+-        if (preg_match($re, $cmd)) {
++        if (preg_match($re, $scan)) {
+             block("`{$cmd}` — {$why}.");
+         }
+     }
+--- a/.claude/hooks/post_tool_check.php
++++ b/.claude/hooks/post_tool_check.php
+@@ -67,6 +67,17 @@
+     }
+ }
+ 
++// P-3: query-builder writes to append-only tables, matched across lines (Pint splits chains).
++if ($ext === 'php' && preg_match('#^apps/api/(app|database)/#', $rel)) {
++    $appendOnly = 'credit_ledger_entries|audit_logs|wallet_entries|subscription_events|enrollment_history|consents|setting_versions|rule_versions|participant_events|delivery_logs';
++    $src = implode("\n", $lines);
++    if (preg_match_all('/DB::table\(\s*[\'"](' . $appendOnly . ')[\'"]\s*\)(?:(?!;).)*?->(update|delete|truncate|upsert|updateOrInsert|increment|decrement)\(/s', $src, $mm, PREG_OFFSET_CAPTURE)) {
++        foreach ($mm[0] as [$hit, $offset]) {
++            $problems[] = sprintf('%s:%d: DB::table(\'%s\')->…  ->  append-only table mutated through the query builder: write a REVERSAL or a new row (constitution art. 5)', $rel, substr_count($src, "\n", 0, $offset) + 1, $mm[1][0][0]);
++        }
++    }
++}
++
+ if ($problems) {
+     fwrite(STDERR, "Project checks failed. Fix these before continuing:\n" . implode("\n", array_slice($problems, 0, 30)) . "\n");
+     exit(2);

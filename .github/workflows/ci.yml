@@ -96,6 +96,9 @@ jobs:
         run: npx --prefix scripts/web playwright install --with-deps chromium
       # Builds both web apps, then runs the runtime third-party request check (D-34).
       - run: bash scripts/verify.sh --all --only dart
+      # Replays tool calls against .claude/hooks and asserts block/allow (WP-0.2). Runs here because
+      # the post-write hook formats Dart before checking, so the suite needs the Dart SDK.
+      - run: bash scripts/verify.sh --all --only guards
 
   contract:
     runs-on: ubuntu-24.04
