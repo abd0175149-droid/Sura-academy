@@ -26,7 +26,6 @@ if (!is_dir($root)) {
     exit(2);
 }
 $errors = [];
-$warnings = [];
 
 function table_rows(string $text): array
 {
@@ -189,6 +188,7 @@ $fixHint = 'record an Open D-xx in docs/00-governance/decisions.md; do not edit 
 $readmeText = is_file($specDir . '/README.md') ? (string) file_get_contents($specDir . '/README.md') : '';
 $sourceName = null;
 $sections = [];
+$packageNotes = 0;
 if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
     $errors[] = 'spec/README.md does not name the source file (`../source/<file>.md`)';
 } elseif (!is_file($root . '/docs/01-product/source/' . $m[1])) {
@@ -206,7 +206,6 @@ if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
         $sections[$heading] = $part;
     }
     $sectionFile = [];
-    $packageNotes = 0;
     foreach (glob($specDir . '/*.md') ?: [] as $f) {
         $file = basename($f);
         if ($file === 'README.md' || str_contains($file, '22-learning')) {
@@ -254,14 +253,35 @@ if (!preg_match('/`\.\.\/source\/([^`]+\.md)`/u', $readmeText, $m)) {
     }
 }
 
-// 2) Traceability table.
+// 2) Traceability table: one row per spec ID, with the spec's priority and file, assigned to at least one
+// work package; plus the business-rules table (BR-xxx => work packages).
 $trace = [];
+$rules = [];
 foreach (rows($root . '/docs/03-plan/traceability.md') as $c) {
-    if (count($c) === 7 && preg_match('/^[A-Z]{2,5}-\d{2,3}$/', $c[0]) && isset($specIds[$c[0]])) {
-        if (isset($trace[$c[0]])) {
-            $errors[] = "duplicate traceability row {$c[0]}";
-        }
-        $trace[$c[0]] = ['backend' => $c[3], 'experience' => $c[4], 'status' => $c[6]];
+    if (count($c) === 2 && preg_match('/^BR-\d{3}$/', $c[0])) {
+        $rules[$c[0]] = preg_split('/\s*,\s*/', $c[1]);
+        continue;
+    }
+    if (count($c) !== 7 || !preg_match('/^[A-Z]{2,5}-\d{2,3}$/', $c[0])) {
+        continue;
+    }
+    [$id, $prio, , $backend, $experience, $file] = $c;
+    if (!isset($specIds[$id])) {
+        $errors[] = "{$id} is in docs/03-plan/traceability.md but not in the spec";
+        continue;
+    }
+    if (isset($trace[$id])) {
+        $errors[] = "duplicate traceability row {$id}";
+    }
+    $trace[$id] = ['backend' => $backend, 'experience' => $experience, 'status' => $c[6]];
+    if (!str_starts_with($prio, $specPrio[$id])) {
+        $errors[] = "{$id}: traceability priority «{$prio}» does not match the spec ({$specPrio[$id]})";
+    }
+    if (trim($file, '`') !== $specIds[$id]) {
+        $errors[] = "{$id}: traceability names " . trim($file, '`') . "; the spec has it in {$specIds[$id]}";
+    }
+    if ($backend === '—' && $experience === '—') {
+        $errors[] = "{$id} is not assigned to any work package";
     }
 }
 foreach ($specIds as $id => $file) {
@@ -277,10 +297,7 @@ foreach (rows($root . '/docs/03-plan/status.md') as $c) {
         $status[$c[0]] = $c[5];
     }
 }
-$phaseText = '';
-foreach (glob($root . '/docs/03-plan/phase-*.md') ?: [] as $f) {
-    $phaseText .= file_get_contents($f);
-}
+$phaseText = implode("\n", array_map('file_get_contents', glob($root . '/docs/03-plan/phase-*.md') ?: []));
 foreach ($trace as $id => $t) {
     foreach (['backend', 'experience'] as $k) {
         $wp = $t[$k];
@@ -289,9 +306,17 @@ foreach ($trace as $id => $t) {
         }
     }
 }
+foreach ($rules as $rule => $wps) {
+    foreach ($wps as $wp) {
+        if (!isset($status[$wp])) {
+            $errors[] = "{$rule}: work package {$wp} is missing from status.md";
+        }
+    }
+}
 foreach (array_keys($status) as $wp) {
-    if (!str_contains($phaseText, $wp)) {
-        $errors[] = "{$wp} is in status.md but has no definition in docs/03-plan/phase-*.md";
+    $q = preg_quote($wp, '/');
+    if (!preg_match("/^(### {$q}\\s|\\| {$q} \\|)/m", $phaseText)) {
+        $errors[] = "{$wp} is in status.md but has no definition in docs/03-plan/phase-*.md (a `### {$wp}` heading or a `| {$wp} |` row)";
     }
 }
 
@@ -322,7 +347,7 @@ foreach ($testFiles as $tf) {
     }
 }
 foreach (array_keys($testIndex) as $id) {
-    if (!isset($specIds[$id]) && !preg_match('/^BR-0(0[1-9]|1[0-8])$/', $id)) {
+    if (!isset($specIds[$id]) && !isset($rules[$id])) {
         $errors[] = "test name references unknown requirement id {$id} (" . $testIndex[$id][0] . ')';
     }
 }
@@ -342,12 +367,10 @@ if (!$quick) {
     }
 }
 
-$counts = array_count_values(array_map(fn ($f) => $f, array_keys($specIds)));
-echo 'requirements: ' . count($specIds) . ' · mapped: ' . count($trace) . ' · work packages: ' . count($status)
-    . ' · test files: ' . count($testFiles) . ' · ids referenced by tests: ' . count($testIndex) . "\n";
-foreach ($warnings as $w) {
-    echo "⚠ {$w}\n";
-}
+$source = $sourceName === null ? 'missing'
+    : "{$sourceName} (" . count($sections) . ' sections · ' . $packageNotes . ' package note' . ($packageNotes === 1 ? '' : 's') . ')';
+echo 'requirements: ' . count($specIds) . ' ' . fmt_split($actualTotals) . " · source: {$source} · mapped: " . count($trace)
+    . ' · work packages: ' . count($status) . ' · test files: ' . count($testFiles) . ' · ids referenced by tests: ' . count($testIndex) . "\n";
 if ($errors) {
     foreach (array_slice($errors, 0, 60) as $e) {
         echo "✖ {$e}\n";
