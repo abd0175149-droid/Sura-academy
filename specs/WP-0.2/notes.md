@@ -82,7 +82,7 @@ Probe cleanup (T3): `GuardProbe.php` and `guard_probe.dart` deleted; the G1/G4/G
 | Acceptance criterion | Evidence |
 | --- | --- |
 | Every attempt in deliverable 3 documented with its expected result | §Guard attempts: G1–G5 all ✅ as expected (plus G1b, G3b–d), extras G5b and G6 documented as gaps with proposals P-3 and P-2; repeatable via `php scripts/test-guards.php` (88/88) |
-| `/sura-status` works and shows next WP-0.3 | Focus block in `status.md` names WP-0.3. `/sura-status` is user-invocable only (`disable-model-invocation: true`), so the owner runs it; result recorded below when received |
+| `/sura-status` works and shows next WP-0.3 | ⚠ Proxy-verified, owner run pending. `/sura-status` is user-invocable only (`disable-model-invocation: true`). On 2026-10-12 Claude ran the skill's own data commands and applied its rule ("first WP in the `master-plan.md` order table with status Not started and all dependencies Done"): WP-0.1 Done, WP-0.2 Review, WP-0.3 Not started with dependency WP-0.1 Done → **WP-0.3**; the focus block also names WP-0.3. The owner said «اكمل» (continue) without running it; record its output here when it is run |
 
 Deliverables 1, 2, 4, 5: §Inventory, §Audit, `proposals.md`, §Guard attempts (cleanup line).
 
