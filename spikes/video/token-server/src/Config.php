@@ -18,6 +18,10 @@ final readonly class Config
         public string $zoomSdkKey = '',
         public string $zoomSdkSecret = '',
         public string $zoomWebhookSecret = '',
+        public string $zoomApiKey = '',
+        public string $zoomApiSecret = '',
+        /** @var array{endpoint: string, bucket: string, access_key: string, secret: string, region: string}|null */
+        public ?array $egressS3 = null,
         public string $accessCode = '',
         public string $ticketSecret = '',
         public ?int $windowOpensAt = null,
@@ -37,6 +41,9 @@ final readonly class Config
             zoomSdkKey: $env['ZOOM_SDK_KEY'] ?? '',
             zoomSdkSecret: $env['ZOOM_SDK_SECRET'] ?? '',
             zoomWebhookSecret: $env['ZOOM_WEBHOOK_SECRET'] ?? '',
+            zoomApiKey: $env['ZOOM_API_KEY'] ?? '',
+            zoomApiSecret: $env['ZOOM_API_SECRET'] ?? '',
+            egressS3: self::egressTarget($varDir),
             accessCode: $local['access_code'],
             ticketSecret: $local['ticket_secret'],
             windowOpensAt: $time('SPIKE_WINDOW_OPENS_AT'),
@@ -60,6 +67,15 @@ final readonly class Config
         }
 
         return $out;
+    }
+
+    /** Written by tools/minio-egress.sh: a write-only MinIO user and the tunnel URL in front of MinIO. */
+    private static function egressTarget(string $varDir): ?array
+    {
+        $file = $varDir.'/egress.json';
+        $data = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+
+        return is_array($data) && isset($data['endpoint'], $data['bucket'], $data['access_key'], $data['secret'], $data['region']) ? $data : null;
     }
 
     /** @return array{access_code: string, ticket_secret: string} */

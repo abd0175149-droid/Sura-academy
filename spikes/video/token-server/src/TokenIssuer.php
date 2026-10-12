@@ -6,7 +6,7 @@ namespace Spike\Video;
 
 /**
  * POST /token: one short-lived token per identity, room, role and provider (CLS-03), only with the
- * spike access code (CLS-05), only inside the join window (CLS-02), never for a locked room (CLS-04).
+ * spike access code (CLS-05), only inside the join window (CLS-02), never to a non-host for a locked room (CLS-04).
  */
 final class TokenIssuer
 {
@@ -43,7 +43,8 @@ final class TokenIssuer
                 'closes_at' => $closes === null ? null : gmdate('Y-m-d\TH:i:s\Z', $closes),
             ]));
         }
-        if ($this->locks->isLocked($room)) {
+        // A lock keeps new participants out; the teacher and substitute can still (re)join and unlock.
+        if (! $role->isHost() && $this->locks->isLocked($room)) {
             throw new ApiError(409, 'room_locked');
         }
 

@@ -18,8 +18,10 @@ use Spike\Video\Config;
 use Spike\Video\EventLog;
 use Spike\Video\Http\Request;
 use Spike\Video\Http\Response;
+use Spike\Video\HttpClient;
 use Spike\Video\Jwt;
 use Spike\Video\RoomLocks;
+use Spike\Video\ZoomRecordings;
 
 require dirname(__DIR__).'/src/autoload.php';
 
@@ -76,7 +78,7 @@ function app(?Config $config = null, ?RoomLocks $locks = null, int $now = NOW): 
 
     $events = new EventLog($GLOBALS['tmp'].'/events-'.bin2hex(random_bytes(4)).'.jsonl');
 
-    return new App($config ?? config(), $locks, $events, static fn (): int => $now);
+    return new App($config ?? config(), $locks, $events, static fn (): int => $now, new FakeHttp());
 }
 
 /** POST /token with sensible defaults; returns the Response. */
@@ -207,6 +209,8 @@ test('spike CLS-04 locked room refuses new tokens', function (): void {
     ok(token(app: $app));
     $locks->lock('spike-room');
     error(token(app: $app), 409, 'room_locked');
+    error(token(['role' => 'supervisor', 'identity' => 'supervisor-1'], $app), 409, 'room_locked');
+    ok(token(['role' => 'teacher', 'identity' => 'teacher-1'], $app));
     ok(token(['room' => 'other-room'], $app));
     $locks->unlock('spike-room');
     ok(token(app: $app));
@@ -364,6 +368,125 @@ test('spike CLS-09 minutes from join leave pairs with reconnect', function (): v
         $e('left', 'teacher-1', 75),
     ], 'spike-room', endAt: NOW + 75 * 60);
     same(['student-1' => 71.0, 'student-2' => 65.0, 'teacher-1' => 75.0], $minutes, 'minutes per identity (student-1 still in the room at the end)');
+});
+
+// --- CLS-04 moderation and CLS-10 recording through the server --------------------------------
+
+/** Records outgoing provider calls; answers with $responder(method, url, body) → [status, body]. */
+final class FakeHttp implements HttpClient
+{
+    public array $calls = [];
+
+    public function __construct(private readonly ?Closure $responder = null) {}
+
+    public function request(string $method, string $url, array $headers, ?string $body = null): array
+    {
+        $this->calls[] = ['method' => $method, 'url' => $url, 'headers' => $headers, 'body' => $body === null ? null : json_decode($body, true)];
+
+        return $this->responder !== null ? ($this->responder)($method, $url, $body) : [200, '{}'];
+    }
+
+    /** Twirp method names called, in order. */
+    public function methods(): array
+    {
+        return array_map(static fn (array $c): string => basename((string) parse_url($c['url'], PHP_URL_PATH)), $this->calls);
+    }
+}
+
+const EGRESS = ['endpoint' => 'https://minio.fixture.example', 'bucket' => 'spike-recordings', 'access_key' => 'fixture-egress-user', 'secret' => 'fixture-egress-pass', 'region' => 'eu-central-1'];
+
+function adminApp(FakeHttp $http, ?RoomLocks $locks = null): App
+{
+    $locks ??= new RoomLocks($GLOBALS['tmp'].'/locks-'.bin2hex(random_bytes(4)).'.json');
+    $config = config(['egressS3' => EGRESS, 'zoomApiKey' => 'fixture-zoom-api-key', 'zoomApiSecret' => 'fixture-zoom-api-secret']);
+
+    return new App($config, $locks, new EventLog($GLOBALS['tmp'].'/events-admin.jsonl'), static fn (): int => NOW, $http);
+}
+
+/** POST /admin/{action} with a host ticket for $room (issued through /token). */
+function admin(App $app, string $action, array $body = [], string $ticketRole = 'teacher', string $ticketRoom = 'spike-room'): Response
+{
+    $ticket = ok(token(['role' => $ticketRole, 'identity' => $ticketRole.'-1', 'room' => $ticketRoom], $app))['admin_ticket'] ?? '';
+
+    return $app->handle(new Request('POST', '/admin/'.$action, ['x-admin-ticket' => $ticket], json_encode($body + ['room' => 'spike-room'])));
+}
+
+function participants(): Closure
+{
+    return static fn (string $m, string $url): array => str_ends_with($url, '/ListParticipants') ? [200, json_encode(['participants' => [
+        ['identity' => 'teacher-1', 'tracks' => [['sid' => 'TR_t_mic', 'type' => 'AUDIO', 'source' => 'MICROPHONE']]],
+        ['identity' => 'student-1', 'tracks' => [['sid' => 'TR_s1_mic', 'type' => 'AUDIO', 'source' => 'MICROPHONE'], ['sid' => 'TR_s1_cam', 'type' => 'VIDEO', 'source' => 'CAMERA']]],
+        ['identity' => 'student-2', 'tracks' => [['sid' => 'TR_s2_mic', 'type' => 'AUDIO', 'source' => 'MICROPHONE', 'muted' => true]]],
+    ]])] : [200, '{}'];
+}
+
+test('spike CLS-04 mute all mutes every student microphone but not the teacher', function (): void {
+    $http = new FakeHttp(participants());
+    same(['muted' => ['student-1']], ok(admin(adminApp($http), 'mute-all')), 'result');
+    same(['ListParticipants', 'MutePublishedTrack'], $http->methods(), 'twirp calls');
+    same(['room' => 'spike-room', 'identity' => 'student-1', 'track_sid' => 'TR_s1_mic', 'muted' => true], $http->calls[1]['body'], 'mute body');
+    same('https://fixture.livekit.cloud/twirp/livekit.RoomService/MutePublishedTrack', $http->calls[1]['url'], 'url from wss');
+    $bearer = substr($http->calls[1]['headers']['Authorization'], strlen('Bearer '));
+    $grant = Jwt::decode($bearer, LK_SECRET, NOW)['video'];
+    same(['spike-room', true], [$grant['room'], $grant['roomAdmin']], 'server-side admin token for this room only');
+});
+
+test('spike CLS-04 remove participant through the server', function (): void {
+    $http = new FakeHttp();
+    ok(admin(adminApp($http), 'remove', ['identity' => 'student-2']));
+    same(['RemoveParticipant'], $http->methods(), 'twirp calls');
+    same(['room' => 'spike-room', 'identity' => 'student-2'], $http->calls[0]['body'], 'remove body');
+    error(admin(adminApp($http), 'remove', ['identity' => 'Sara']), 422, 'validation_failed');
+});
+
+test('spike CLS-04 admin actions need a host ticket for the same room', function (): void {
+    $http = new FakeHttp(participants());
+    $app = adminApp($http);
+    error($app->handle(new Request('POST', '/admin/mute-all', [], json_encode(['room' => 'spike-room']))), 403, 'forbidden');
+    error(admin($app, 'mute-all', ticketRole: 'student'), 403, 'forbidden');
+    error(admin($app, 'mute-all', ticketRoom: 'other-room'), 403, 'forbidden');
+    ok(admin($app, 'mute-all', ticketRole: 'substitute'));
+});
+
+test('spike CLS-04 lock through the server stops new tokens', function (): void {
+    $app = adminApp(new FakeHttp());
+    ok(admin($app, 'lock'));
+    error(token(app: $app), 409, 'room_locked');
+    ok(admin($app, 'unlock'));
+    ok(token(app: $app));
+});
+
+test('spike CLS-10 livekit recording uploads straight to our bucket', function (): void {
+    $http = new FakeHttp(static fn (): array => [200, json_encode(['egressId' => 'EG_1', 'status' => 'EGRESS_STARTING'])]);
+    same(['egress_id' => 'EG_1'], ok(admin(adminApp($http), 'record/start')), 'start result');
+    same('https://fixture.livekit.cloud/twirp/livekit.Egress/StartRoomCompositeEgress', $http->calls[0]['url'], 'egress url');
+    $req = $http->calls[0]['body'];
+    same('spike-room', $req['room_name'], 'room');
+    $s3 = $req['file_outputs'][0]['s3'];
+    same([EGRESS['bucket'], EGRESS['endpoint'], true, EGRESS['region']], [$s3['bucket'], $s3['endpoint'], $s3['force_path_style'], $s3['region']], 's3 target');
+    check(str_starts_with($req['file_outputs'][0]['filepath'], 'spike-room/'), 'object key per room');
+    ok(admin(adminApp($http), 'record/stop', ['egress_id' => 'EG_1']));
+    same(['egress_id' => 'EG_1'], $http->calls[1]['body'], 'stop body');
+    error(admin(adminApp(new FakeHttp(static fn (): array => [400, '{"code":"invalid_argument"}'])), 'record/start'), 502, 'provider_error');
+});
+
+test('spike CLS-10 zoom recordings are listed downloaded and deleted permanently', function (): void {
+    $files = ['recording_files' => [['id' => 'F1', 'file_type' => 'MP4', 'file_size' => 3, 'download_url' => 'https://zoom.fixture/rec/F1']]];
+    $http = new FakeHttp(static fn (string $m, string $url): array => match (true) {
+        $m === 'GET' && str_contains($url, '/rec/F1') => [200, 'mp4'],
+        $m === 'GET' => [200, json_encode($files)],
+        default => [204, ''],
+    });
+    $zoom = new ZoomRecordings(config(['zoomApiKey' => 'fixture-zoom-api-key', 'zoomApiSecret' => 'fixture-zoom-api-secret']), $http, static fn (): int => NOW);
+    same($files['recording_files'], $zoom->files('/abc==//x'), 'files');
+    same('https://api.zoom.us/v2/videosdk/sessions/'.rawurlencode(rawurlencode('/abc==//x')).'/recordings', $http->calls[0]['url'], 'double-encoded session id');
+    $api = Jwt::decode(substr($http->calls[0]['headers']['Authorization'], 7), 'fixture-zoom-api-secret', NOW);
+    same('fixture-zoom-api-key', $api['iss'], 'API JWT issuer');
+    $target = $GLOBALS['tmp'].'/zoom-F1.mp4';
+    same(3, $zoom->download($files['recording_files'][0], $target), 'bytes written');
+    same('mp4', file_get_contents($target), 'file content');
+    $zoom->delete('abc');
+    same(['DELETE', 'https://api.zoom.us/v2/videosdk/sessions/abc/recordings?action=delete'], [end($http->calls)['method'], end($http->calls)['url']], 'permanent delete');
 });
 
 // --- runner ----------------------------------------------------------------------------------

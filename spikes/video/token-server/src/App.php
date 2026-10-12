@@ -20,6 +20,7 @@ final class App
         private readonly RoomLocks $locks,
         private readonly EventLog $events,
         private readonly Closure $clock,
+        private readonly HttpClient $http,
     ) {}
 
     public function handle(Request $request): Response
@@ -32,7 +33,9 @@ final class App
                 ['POST', '/webhooks/livekit'] => $this->stored(LiveKitWebhook::receive($request, $this->config, ($this->clock)())),
                 ['POST', '/webhooks/zoom'] => $this->zoomHook($request),
                 ['GET', '/events'] => $this->eventsView($request),
-                default => throw new ApiError(404, 'not_found'),
+                default => str_starts_with($request->path, '/admin/') && $request->method === 'POST'
+                    ? $this->admin($request, substr($request->path, strlen('/admin/')))
+                    : throw new ApiError(404, 'not_found'),
             };
         } catch (ApiError $e) {
             return self::error($e, $requestId);
@@ -69,6 +72,56 @@ final class App
             'events' => $events,
             'attendance_minutes' => array_combine($rooms, array_map(static fn (string $room): array => AttendanceProbe::minutes($events, $room, $now), $rooms)) ?: (object) [],
         ]);
+    }
+
+    /** Host-only moderation (CLS-04) and recording (CLS-10), authorized by the server-signed admin ticket. */
+    private function admin(Request $request, string $action): Response
+    {
+        $body = $request->json();
+        $room = is_string($body['room'] ?? null) ? $body['room'] : '';
+        try {
+            $ticket = Jwt::decode($request->header('x-admin-ticket'), $this->config->ticketSecret, ($this->clock)());
+        } catch (\InvalidArgumentException) {
+            throw new ApiError(403, 'forbidden');
+        }
+        if (($ticket['aud'] ?? null) !== 'spike-admin' || ($ticket['room'] ?? null) !== $room
+            || ! in_array($ticket['role'] ?? null, ['teacher', 'substitute'], true)) {
+            throw new ApiError(403, 'forbidden');
+        }
+
+        if ($action === 'lock' || $action === 'unlock') {
+            $action === 'lock' ? $this->locks->lock($room) : $this->locks->unlock($room);
+
+            return Response::json(200, ['room' => $room, 'locked' => $action === 'lock']);
+        }
+        if (($ticket['provider'] ?? null) !== 'livekit') {
+            throw new ApiError(422, 'validation_failed', ['provider' => 'Zoom moderation and recording run in the host client SDK']);
+        }
+
+        $liveKit = new LiveKitAdmin($this->config, $this->http, ($this->clock)());
+        $identity = is_string($body['identity'] ?? null) ? $body['identity'] : '';
+
+        return match ($action) {
+            'participants' => Response::json(200, ['participants' => array_map(
+                static fn (array $p): array => ['identity' => $p['identity'] ?? null, 'tracks' => count($p['tracks'] ?? [])],
+                $liveKit->participants($room),
+            )]),
+            'mute-all' => Response::json(200, ['muted' => $liveKit->muteAll($room)]),
+            'remove' => preg_match('/^(student|supervisor|bot|substitute|teacher)-[1-9]$/', $identity) === 1
+                ? (static function () use ($liveKit, $room, $identity): Response {
+                    $liveKit->remove($room, $identity);
+
+                    return Response::json(200, ['removed' => $identity]);
+                })()
+                : throw new ApiError(422, 'validation_failed', ['fields' => ['identity']]),
+            'record/start' => Response::json(200, ['egress_id' => $liveKit->startRecording($room)]),
+            'record/stop' => (static function () use ($liveKit, $room, $body): Response {
+                $liveKit->stopRecording($room, (string) ($body['egress_id'] ?? ''));
+
+                return Response::json(200, ['egress_id' => (string) ($body['egress_id'] ?? '')]);
+            })(),
+            default => throw new ApiError(404, 'not_found'),
+        };
     }
 
     private function requireAccessCode(Request $request): void
