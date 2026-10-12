@@ -99,6 +99,10 @@ elif have php; then
   if touches '^scripts/(check|test)-traceability\.php'; then
     gate "traceability:selftest" php scripts/test-traceability.php
   fi
+  # The owner's roadmap page is built from these files; keep them buildable.
+  if touches '^(docs/03-plan/|scripts/build-roadmap\.php)'; then
+    gate "roadmap" php scripts/build-roadmap.php --check
+  fi
 else
   RESULTS+=("❌ traceability (php not found)"); FAILED=1
 fi

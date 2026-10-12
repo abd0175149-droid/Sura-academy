@@ -48,5 +48,6 @@ Run, in parallel, the agents listed in the WP's "المراجعات" row plus `t
 1. `php scripts/check-traceability.php --wp $ARGUMENTS` passes.
 2. Update status.md (row → `Review`, date, branch) and the focus block (next WP from `docs/03-plan/master-plan.md` order); set this WP's IDs to `Implemented` in traceability.md.
 3. Write Arabic manual demo steps in notes.md (numbered, runnable by the user).
-4. Commit; ask permission to push; open the PR with [templates/pr.md](templates/pr.md) via `gh pr create`.
-5. Report to the user in Arabic: what was built, evidence, what to check manually, the next WP. Suggest `/clear` before the next WP.
+4. **Owner roadmap (required; the WP is not closed without it).** If the WP added anything the owner can see or try (screen, page, app, PDF, email, device trial), update or add its station in `docs/03-plan/test-stations.md` with plain-Arabic numbered steps (rules at the top of that file). Then `php scripts/build-roadmap.php --out <scratchpad>/roadmap.html` and publish it to the URL in that file's «رابط الصفحة» line: `Artifact` action `read` on that URL first (a new session must read before publishing), then publish with `url`. Do it again when the row becomes `Done` right before the merge.
+5. Commit; ask permission to push; open the PR with [templates/pr.md](templates/pr.md) via `gh pr create`.
+6. Report to the user in Arabic: what was built, evidence, the roadmap link and which station (if any) is ready to try, the next WP. Suggest `/clear` before the next WP.

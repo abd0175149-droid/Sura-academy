@@ -7,6 +7,12 @@
 ## Deviations / surprises
 - T3: the approved design said the comparison ignores figure captions `> **شكل (منقول نصاً …)**`. Wrong: the preflight probe compared line *sets* and misread which line in file 13 was extra. The three captions are in the source too, so they are compared like any line (a test proves it). The real extra line is the package note `> **تنبيه الحزمة:** …` at the end of `13-architecture-original.md` (Vue/Inertia row replaced by ADR-003), which `spec/README.md` documents under «ملاحظات النقل». The checker ignores `> **تنبيه الحزمة:**` lines and `<!-- … -->` headers, and counts package notes in its summary line so they stay visible. No D-xx: the difference is already documented by the owner and decided by ADR-003. Owner told in chat; the approval page was corrected.
 
+- Owner request at merge approval (2026-10-12, chat): «before merging, make a clear artifact showing the phases and where we are, with stations where I can manually test everything built in the UIs; updating it is a condition for completing any stage». Added in this PR (outside the WP's original scope, at the owner's explicit instruction):
+  - `docs/03-plan/test-stations.md`: 22 manual-test stations (1 ready: WP-0.1 family app shell), maintenance rules, the page URL.
+  - `scripts/build-roadmap.php`: builds the Arabic page from status.md, master-plan.md, traceability.md and test-stations.md (`--check` validates inputs); `verify.sh` gate `roadmap`.
+  - The rule: `/sura-wp` Step 6 item 4, a line in CLAUDE.md "How work happens", and item 7 in the `traceability-checker` checklist.
+  - Page: https://claude.ai/artifact/4zDSyPxRyprgRwWEDWDKMp (published from this branch with WP-0.3 = Done).
+
 ## Verification evidence
 `php scripts/check-traceability.php` (full mode) on the repository, 2026-10-12:
 ```

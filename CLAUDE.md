@@ -21,6 +21,7 @@ If sources conflict, or a needed rule/decision is missing: stop, append a `D-xx`
 - Plan before code: `specs/WP-x.y/design.md` + `tasks.md`, then wait for the user's approval.
 - TDD is mandatory for engines: ledger, scheduling/time, billing, compensation, access control.
 - Before claiming anything is done: run `/verify` and paste the summary. Then update `status.md` and run the review agents the WP lists.
+- Closing a WP requires republishing the owner's roadmap page (`docs/03-plan/test-stations.md` + `php scripts/build-roadmap.php`, `/sura-wp` Step 6). No PR or merge request before it is current.
 - One WP per session. `/clear` between WPs. Commit small, coherent steps.
 
 ## Stack (ADR-002, ADR-003, ADR-004)
