@@ -1,6 +1,8 @@
 # Proposals for human-only files — WP-0.2
 
-`.claude/settings.json` and `.claude/hooks/*` are human-only (hook-enforced), so Claude prepared these as patches for the owner. Nothing here has been applied. Each patch was checked with `git apply --check` against this branch; the hook patch was validated by running the guard suite against a patched **copy** of the hooks (`GUARD_HOOKS_DIR`).
+> **Status 2026-10-12: applied by the owner** with `proposals/apply-owner-steps.sh` (PR #4): P-1…P-5 applied, O-1 done, O-2 skipped by choice (add the key later with one `export` line in `~/.bashrc`), D-32/D-33/D-34 approved. Results in `notes.md` §Inventory "Update 2026-10-12".
+
+`.claude/settings.json` and `.claude/hooks/*` are human-only (hook-enforced), so Claude prepared these as patches for the owner. Claude applied none of them. Each patch was checked with `git apply --check` against this branch; the hook patch was validated by running the guard suite against a patched **copy** of the hooks (`GUARD_HOOKS_DIR`).
 
 ## Summary
 
