@@ -1,0 +1,18 @@
+# Tasks — WP-0.5
+
+Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command required.
+Spike gates (spikes/ are outside `verify.sh`): `cd spikes/flutter-web/app && dart format --set-exit-if-changed . && flutter analyze && flutter test` · `php spikes/flutter-web/server/tests/run.php`.
+
+- [ ] T1 Scaffold: `spikes/flutter-web/{app,server,tools,results}`, README, `.gitignore` for `var/` and builds; standalone Flutter app (web + Android), ARB `ar`/`en`, fonts (Noto Naskh Arabic, IBM Plex Sans Arabic 400–700, OFL) with source and SHA-256 in notes.md — verify: `cd spikes/flutter-web/app && flutter analyze && flutter test`
+- [ ] T2 Tests (failing) for CNT-08 and NFR-a11y: diacritics stripping, reading page at 16/24/32 × text scale 2.0 without overflow, diacritics switch, Arabic semantics on form/list/button — verify: `flutter test` fails for the right reason
+- [ ] T3 App: reading screen, form/list/button screen, semantics on at start, text samples, RTL — verify: spike Flutter gates green
+- [ ] T4 Tests (failing) for the server: isolation headers per variant, CSP on every response, base-href rewrite and `r-<run>` mapping, precompressed files, run key and size caps, PNG check, traversal, payment return allow-list — verify: `php spikes/flutter-web/server/tests/run.php` fails for the right reason
+- [ ] T5 Server: router, headers, static files, `/metrics` `/shots` `/feedback` `/csp-report` `/livekit-token`, fake payment origin — verify: server self-test green + `curl -sI` per variant
+- [ ] T6 Web shell: Arabic HTML splash, bootstrap marks and config, hand-written `sw.js`, `manifest.json`; app measurement module (renderer, isolation, SW state, marks → `/metrics`), auto-run page — verify: test `spike NFR-perf startup marks are reported once with renderer info` + manual load in Chrome
+- [ ] T7 App: payment tab (redirect / popup / iframe), video tab (local LiveKit), capture button, feedback tab — verify: spike Flutter gates green + one manual round-trip per payment mode
+- [ ] T8 Tools: `build.sh` (two web builds, SW list, brotli/gzip, `sizes.csv`, APK), `serve.sh`/`stop.sh` (two servers, two quick tunnels, LiveKit dev container), `measure.mjs`, `summarize.php` — verify: `bash tools/build.sh && bash tools/serve.sh` prints working links; `node tools/measure.mjs --runs 1` completes
+- [ ] T9 Gate: `scripts/web/check-no-third-party.mjs` fails when `fontFallbackBaseUrl` is Google's default; run it on the spike builds and `apps/family` — verify: `node scripts/web/check-no-third-party.mjs spikes/flutter-web/app/build/web-wasm` + a negative case + `bash scripts/verify.sh --changed`
+- [ ] T10 PC baseline: full measurement matrix (3 profiles × 4 variants × 10 cold/10 warm), isolation flows, video probe, accessibility snapshot, third-party log, web and Android screenshots — verify: `results/{load-times,sizes}.csv`, `results/{summary,isolation,a11y,requests}.md` written
+- [ ] T11 Owner devices: station steps in `docs/03-plan/test-stations.md`; prepare links; iPad Safari (auto-run, VoiceOver, install, payment return in the installed app, screenshots), Chromebook or substitute, Android — verify: device rows in `results/load-times.csv` + feedback answers in notes.md
+- [ ] T12 Decision pack: ADR-010 final settings and the written isolation decision (Proposed until approved), D-22/CR-003 number proposal as an Arabic approval page; after approval → ADR-010 Accepted, status approvals table — verify: owner's approval recorded in notes.md
+- [ ] T13 Close: `verify.sh --all`, notes.md evidence and demo steps, `rtl-reviewer` + `traceability-checker`, status.md, roadmap page, PR — verify: `php scripts/check-traceability.php --wp WP-0.5`
