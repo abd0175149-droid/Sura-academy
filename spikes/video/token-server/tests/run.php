@@ -489,6 +489,20 @@ test('spike CLS-10 zoom recordings are listed downloaded and deleted permanently
     same(['DELETE', 'https://api.zoom.us/v2/videosdk/sessions/abc/recordings?action=delete'], [end($http->calls)['method'], end($http->calls)['url']], 'permanent delete');
 });
 
+test('spike CLS-10 zoom api uses a Platform Studio key as bearer when there is no secret', function (): void {
+    $http = new FakeHttp(static fn (): array => [200, '{"sessions":[]}']);
+    $zoom = new ZoomRecordings(config(['zoomApiKey' => 'fixture-platform-studio-key', 'zoomApiSecret' => '']), $http, static fn (): int => NOW);
+    same([], $zoom->sessions('2026-10-01', '2026-10-13'), 'sessions');
+    same('Bearer fixture-platform-studio-key', $http->calls[0]['headers']['Authorization'], 'key sent as is, no JWT');
+    $none = new ZoomRecordings(config(['zoomApiKey' => '', 'zoomApiSecret' => '']), $http, static fn (): int => NOW);
+    try {
+        $none->sessions('2026-10-01', '2026-10-13');
+        throw new LogicException('no key must fail');
+    } catch (Spike\Video\ApiError $e) {
+        same('provider_not_configured', $e->errorCode, 'error');
+    }
+});
+
 // --- join-time metrics and static files ------------------------------------------------------
 
 test('spike NFR-join metrics stored without names and only with the access code', function (): void {

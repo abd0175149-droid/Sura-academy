@@ -65,10 +65,17 @@ final class ZoomRecordings
         return $body === '' ? [] : (json_decode($body, true) ?: []);
     }
 
+    /**
+     * Two credential kinds (https://developers.zoom.us/docs/build/api-request/): a Platform Studio
+     * API key alone is sent as the bearer token; a legacy API key + secret signs a short JWT.
+     */
     private function auth(): array
     {
-        if ($this->config->zoomApiKey === '' || $this->config->zoomApiSecret === '') {
+        if ($this->config->zoomApiKey === '') {
             throw new ApiError(503, 'provider_not_configured', ['provider' => 'zoom api']);
+        }
+        if ($this->config->zoomApiSecret === '') {
+            return ['Authorization' => 'Bearer '.$this->config->zoomApiKey];
         }
         $now = ($this->clock)();
 

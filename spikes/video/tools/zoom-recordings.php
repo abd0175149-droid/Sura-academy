@@ -20,11 +20,29 @@ use Spike\Video\ZoomRecordings;
 $server = dirname(__DIR__).'/token-server';
 require $server.'/src/autoload.php';
 
-$zoom = new ZoomRecordings(Config::load($server.'/.env', $server.'/var'), new CurlHttpClient(), static fn (): int => time());
+$config = Config::load($server.'/.env', $server.'/var');
+$zoom = new ZoomRecordings($config, new CurlHttpClient(), static fn (): int => time());
 [$command, $arg1, $arg2] = [$argv[1] ?? '', $argv[2] ?? '', $argv[3] ?? ''];
 
 try {
     switch ($command) {
+        case 'check':
+            // Which credential kind is configured, and which header style Zoom accepts. Prints
+            // set/empty and HTTP status codes only, never a key.
+            $key = $config->zoomApiKey;
+            printf("api key: %s · api secret: %s · whitespace or quotes in key: %s\n",
+                $key === '' ? 'empty' : 'set ('.strlen($key).' chars)',
+                $config->zoomApiSecret === '' ? 'empty' : 'set',
+                preg_match('/[\s"\']/', $key) === 1 ? 'yes' : 'no');
+            $range = http_build_query(['from' => gmdate('Y-m-d', time() - 7 * 86400), 'to' => gmdate('Y-m-d'), 'page_size' => 5]);
+            foreach (['/videosdk/sessions', '/videosdk/recordings'] as $path) {
+                foreach (['Authorization: Bearer' => ['Authorization' => 'Bearer '.$key], 'x-api-key' => ['x-api-key' => $key]] as $style => $headers) {
+                    [$status, $body] = (new CurlHttpClient())->request('GET', 'https://api.zoom.us/v2'.$path.'?'.$range, $headers);
+                    $json = json_decode($body, true) ?: [];
+                    printf("%-21s %-22s HTTP %d %s %s\n", $path, $style, $status, $json['code'] ?? '', mb_substr((string) ($json['message'] ?? (isset($json['sessions']) ? count($json['sessions']).' session(s)' : '')), 0, 80));
+                }
+            }
+            break;
         case 'list':
             $sessions = $zoom->sessions($arg1 ?: gmdate('Y-m-d', time() - 7 * 86400), $arg2 ?: gmdate('Y-m-d'));
             foreach ($sessions as $s) {
