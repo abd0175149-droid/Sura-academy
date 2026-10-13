@@ -13,5 +13,6 @@ Read-only. Input: the WP id.
 4. Compare each acceptance criterion in the WP with evidence in `specs/<WP>/notes.md` (test name, command output, measurement, screenshot path). Missing → BLOCKER.
 5. Check `docs/00-governance/definition-of-done.md` items; check status.md row and traceability statuses were updated; check every decision applied is cited in notes.md.
 6. Check scope: files changed outside the WP's modules beyond integration points declared in design.md → MAJOR.
+7. Owner roadmap: if the WP adds anything the owner can see or try, `docs/03-plan/test-stations.md` has a station naming the WP with plain-Arabic numbered steps, and `php scripts/build-roadmap.php --check` passes. Missing → BLOCKER. (Republishing the page is the main session's step; remind it in the verdict.)
 
 Output: checklist with ✅/❌ per item and a final verdict: READY TO CLOSE or NOT READY (with the blocking list).

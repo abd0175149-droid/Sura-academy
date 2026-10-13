@@ -90,7 +90,19 @@ fi
 if ! area traceability; then
   :
 elif have php; then
-  gate "traceability" php scripts/check-traceability.php --quick
+  # --all (and CI) runs the full check: WPs in Review/Done need a test for every assigned ID (WP-0.3).
+  if [ "$MODE" = "--all" ]; then
+    gate "traceability" php scripts/check-traceability.php
+  else
+    gate "traceability" php scripts/check-traceability.php --quick
+  fi
+  if touches '^scripts/(check|test)-traceability\.php'; then
+    gate "traceability:selftest" php scripts/test-traceability.php
+  fi
+  # The owner's roadmap page is built from these files; keep them buildable.
+  if touches '^(docs/03-plan/|scripts/build-roadmap\.php)'; then
+    gate "roadmap" php scripts/build-roadmap.php --check
+  fi
 else
   RESULTS+=("❌ traceability (php not found)"); FAILED=1
 fi
