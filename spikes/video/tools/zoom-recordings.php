@@ -34,6 +34,24 @@ try {
                 $key === '' ? 'empty' : 'set ('.strlen($key).' chars)',
                 $config->zoomApiSecret === '' ? 'empty' : 'set',
                 preg_match('/[\s"\']/', $key) === 1 ? 'yes' : 'no');
+            // A short fingerprint tells whether the value changed between attempts without showing it.
+            $parts = explode('.', $key);
+            $claims = count($parts) === 3 ? json_decode((string) base64_decode(strtr($parts[1], '-_', '+/')), true) : null;
+            printf("fingerprint: %s · looks like a JWT: %s%s\n",
+                substr(hash('sha256', $key), 0, 8),
+                is_array($claims) ? 'yes' : 'no',
+                is_array($claims) && isset($claims['exp']) ? ' (expires '.gmdate('Y-m-d H:i', (int) $claims['exp']).' UTC)' : '');
+            // What the server itself uses: a key alone as bearer, or a JWT signed with key + secret.
+            try {
+                $count = count($zoom->sessions(gmdate('Y-m-d', time() - 7 * 86400), gmdate('Y-m-d')));
+                printf("server auth (%s): OK, %d session(s) with recordings in the last 7 days\n", $config->zoomApiSecret === '' ? 'key as bearer' : 'JWT from key + secret', $count);
+            } catch (ApiError $e) {
+                printf("server auth (%s): %s %s\n", $config->zoomApiSecret === '' ? 'key as bearer' : 'JWT from key + secret', $e->errorCode, json_encode($e->details, JSON_UNESCAPED_SLASHES));
+            }
+            if ($config->zoomApiSecret !== '') {
+                break;
+            }
+            // Key alone: try both header styles on two endpoints to tell a bad key from a bad endpoint.
             $range = http_build_query(['from' => gmdate('Y-m-d', time() - 7 * 86400), 'to' => gmdate('Y-m-d'), 'page_size' => 5]);
             foreach (['/videosdk/sessions', '/videosdk/recordings'] as $path) {
                 foreach (['Authorization: Bearer' => ['Authorization' => 'Bearer '.$key], 'x-api-key' => ['x-api-key' => $key]] as $style => $headers) {
