@@ -42,7 +42,7 @@ None to `contracts/openapi/sura-api.v1.yaml`. The spike server's own endpoints a
 | POST | `/shots` | PNG body, `?device=&variant=&font=&size=` + run key | 204 | 403 · 413 (> 5 MB) · 415 not PNG |
 | POST | `/feedback` | `{device, answers{q1..qn: yes\|no}}` + run key | 204 | 403 · 422 |
 | POST | `/csp-report` | CSP report JSON | 204 | 413 |
-| POST | `/livekit-token` | `{room, identity}` + run key → token for the **local** LiveKit dev server only | `{token, url}` | 403 · 422 |
+| POST | `/livekit-token` | `{target: local\|cloud, room, identity}` + run key → token for the local LiveKit dev server or LiveKit Cloud (WP-0.4 key) | `{token, url}` | 403 · 422 · 503 no cloud key |
 | GET | `/downloads/flutter-web-spike.apk` | — | Android APK for the screenshot comparison | 404 |
 | GET | (payment origin, second port) `/pay`, `/frame`, `/popup` | `?return=<app url>&mode=` | fake hosted payment page with «ادفع» / «إلغاء» | 400 return URL not on the allow-list |
 
@@ -67,12 +67,14 @@ Spike only, no business rules.
 - Strings in ARB (`ar` first, `en`), RTL by default, directional APIs only, semantics labels on every control, touch targets ≥ 44 px. No goldens (spike, thrown away after the decision). No analytics.
 
 ## 7. Security & privacy
-- Public repo: no keys in git. The LiveKit dev server uses its built-in development key, which only works against a local server; nothing from WP-0.4's key file is read or reused.
+- Public repo: no keys in git. The LiveKit dev server uses its built-in development key, which only works against a local server. For the iPad video check the spike server reads only the `LIVEKIT_*` lines of WP-0.4's key file at runtime (owner's answer 3b); Claude never opens or prints it, tokens are short-lived (10 min) and bound to one test room, and the owner revokes the key at WP close.
 - Testers are **adults only** (owner); no child takes part. Screenshots contain only the test text; metrics carry a fixed device label, browser user agent and timings, nothing else.
 - The quick-tunnel links are shared only with the owner and change every session; POST endpoints need the run key; the payment origin refuses return URLs outside the app origin.
 - `rtl-reviewer` runs at the end (WP review row), plus `traceability-checker`.
 
 ## 8. Risks & open questions (owner)
+Owner answers 2026-10-13 (notes.md): 1 (a) borrowed Chromebook · 2 (a) emulator · 3 (b) iPad video with the existing WP-0.4 LiveKit Cloud key, read at runtime from `spikes/video/token-server/.env` (`LIVEKIT_KEY_FILE`), never opened by Claude · 4 and 5 approved.
+
 1. **No Chromebook among the owner's devices (WP-0.4 list: Windows PC with Chrome, iPad, iPhone, Android phone).** Options: (a) borrow a Chromebook for one session; (b) substitute: Chrome on the Windows PC with CPU slowed × 4 (same WASM path, estimated CPU) plus Chrome on the Android phone as a real mid-range device; (c) both.
 2. **Android screenshots:** (a) Claude runs an Android emulator on this machine (`/dev/kvm` is present; one-time system image ≈ 1.5 GB in `~/tools/android-sdk`), no owner effort; (b) the owner installs the APK on their Android phone and presses «التقاط صورة»; (c) both.
 3. **Video under the isolation headers on iPad:** (a) local LiveKit dev server in Chrome on this machine only (automatic, no keys); (b) additionally a one-session LiveKit Cloud key that the owner creates and revokes afterwards, to test Safari on iPad.
