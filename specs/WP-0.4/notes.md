@@ -4,6 +4,9 @@
 - D-20 (Open): this WP produces the evidence that closes it. ADR-005 tie rule: LiveKit Cloud. Status changes to ADR-005/D-20 only after the owner's explicit approval of the recommendation.
 - D-16 (Default): recording copied to private EU storage within 1 h and deleted from the provider within 24 h. Spike proves the mechanics with local MinIO standing in for S3 `eu-central-1`.
 
+- D-32 (Approved, lists WP-0.4; noticed 2026-10-13, not in the WP row): the development machine is for development and preview only, no real family or child data. Applied: the spike ran there with adult testers under pseudonyms, test content only; recordings stay local and are purged at WP close.
+- LiveKit remove participant verified server-side (2026-10-13): bot-7 joined 06:39:15, `/admin/remove` → left 06:39:17 and did not return (token revoked on Cloud).
+
 ## Owner approvals
 - 2026-10-12, design and tasks approved via the approval page (https://claude.ai/artifact/TPZyiDjkotwuBEUXn66Xmv). Answers: 1 yes · 2 (a) has a Mac usable for a week, **not available yet** · 3 devices: Android phone, iPhone, iPad (plus the Windows PC with Chrome) · 4 three adult helpers available · 5 tools outside the repo approved (`cloudflared`, JDK + Android SDK in `~/tools`, Docker images) · 6 spike-only dependencies approved (`livekit_client`, `flutter_zoom_videosdk`, `http`, `@zoom/videosdk`) · 7 Zoom web probe approved.
 - Consequence of answer 2/3: iOS native builds (LiveKit and Zoom) wait for the Mac window; everything else proceeds. iPhone/iPad are measured in Safari first.
