@@ -155,6 +155,7 @@ final class App
             'device' => is_string($in['device'] ?? null) && preg_match('/^[a-z0-9-]{2,30}$/', $in['device']) === 1,
             'network' => in_array($in['network'] ?? null, ['normal', 'limited-1.5mbit'], true),
             'role' => is_string($in['role'] ?? null) && Role::tryFrom($in['role']) !== null,
+            'room' => is_string($in['room'] ?? null) && preg_match('/^[a-z0-9][a-z0-9-]{2,39}$/', $in['room']) === 1,
             'mode' => in_array($in['mode'] ?? null, ['auto', 'manual'], true),
             'trial' => is_int($in['trial'] ?? null),
             'ok' => is_bool($in['ok'] ?? null),
@@ -166,7 +167,7 @@ final class App
         if ($bad !== []) {
             throw new ApiError(422, 'validation_failed', ['fields' => $bad]);
         }
-        $row = array_intersect_key($in, $checks + ['room' => true, 'error' => true]);
+        $row = array_intersect_key($in, $checks + ['error' => true]);
         if (isset($row['error'])) {
             $row['error'] = mb_substr((string) $row['error'], 0, 200);
         }

@@ -22,7 +22,7 @@ flowchart TB
     S3[("S3 خاص eu-central-1<br/>روابط موقعة")]
   end
   subgraph Ext["تكاملات خلف محوّلات"]
-    VID["VideoProvider<br/>(LiveKit أو Zoom — ADR-005)"]
+    VID["VideoProvider<br/>(LiveKit Cloud — ADR-005)"]
     PAY["PaymentGateway: PayTabs"]
     MAIL["Amazon SES"]
     SMS["Twilio Verify / SMS"]

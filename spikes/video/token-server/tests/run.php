@@ -513,6 +513,7 @@ test('spike NFR-join metrics stored without names and only with the access code'
     same(204, $app->handle(new Request('POST', '/metrics', ['x-spike-code' => 'fixture-code'], json_encode($trial)))->status, 'stored');
     error($app->handle(new Request('POST', '/metrics', [], json_encode($trial))), 403, 'forbidden');
     error($app->handle(new Request('POST', '/metrics', ['x-spike-code' => 'fixture-code'], json_encode(['device' => 'Sara iPad'] + $trial))), 422, 'validation_failed');
+    error($app->handle(new Request('POST', '/metrics', ['x-spike-code' => 'fixture-code'], json_encode(['room' => 'Sara Room'] + $trial))), 422, 'validation_failed');
     $stored = json_decode(trim((string) file_get_contents($file)), true);
     check(! isset($stored['name']), 'unknown fields are dropped');
     same([2100, 'ipad-safari', NOW], [$stored['t_first_video_ms'], $stored['device'], $stored['received_at']], 'stored fields');

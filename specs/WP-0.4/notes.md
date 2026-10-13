@@ -16,7 +16,7 @@
 ## Deviations / surprises
 - Provider facts checked 2026-10-12 (sources in design.md §8): Zoom has no Flutter web plan; Zoom JWT `exp` must be ≥ 30 min after `iat`, which weakens "short-lived token" (CLS-03); LiveKit Cloud stores no recordings (egress needs our bucket); LiveKit EU media pinning needs the Scale plan; Zoom free tier is 20 credits (≈ 5,700 participant-minutes), not the 10,000 min/month quoted in spec/16.
 - Account facts checked 2026-10-12 (second research pass): LiveKit's project "data region" covers analytics/logs only, not media; EU media routing = region pinning on Scale (support request). LiveKit Build plan needs no card and hard-caps at 5,000 participant-min and 60 recording (transcode) min. Zoom Build Platform: new account required; trial = 20 credits (checkout says one-time, 12-month expiry; another Zoom page says monthly); SDK key/secret, API key/secret and webhook Secret Token live in the legacy Build portal; recording storage location can be Germany; `DELETE …/recordings?action=delete` is permanent (`trash` keeps 30 days).
-- T4: `livekit_client` 2.13.1 compiles for Flutter web both as JS and as WebAssembly (`flutter build web --wasm --no-web-resources-cdn`), and the built app makes no request outside its own origin (Playwright network log, 2026-10-12). Evidence for WP-0.5 / ADR-010.
+- T4: `livekit_client` 2.13.1 compiles for Flutter web both as JS and as WebAssembly (`flutter build web --wasm --no-web-resources-cdn`). Loading the join screen made no request outside its own origin (Playwright network log, 2026-10-12). Caveat from the privacy review: the build keeps Flutter's default `fontFallbackBaseUrl` (`https://fonts.gstatic.com/s/`), so a glyph missing from IBM Plex Sans Arabic (emoji, symbols in a name or chat) would fetch from Google Fonts. Latent here (UI strings are covered by the font). For WP-0.5 / ADR-010: point `fontFallbackBaseUrl` at our origin and add a missing-glyph case to the `web:no-third-party-requests` gate.
 - Zoom on Android (T6/T9, 2026-10-12), integration cost visible before any call:
   1. `flutter_zoom_videosdk` 2.6.0 declares the Zoom SDK as `implementation`, so the app's generated plugin registrant does not compile (`cannot access ZoomVideoSDKDelegate`); fix: declare `us.zoom.videosdk:zoomvideosdk-core:2.6.0` in the app too.
   2. R8 (release shrinking) fails on classes the Zoom SDK and Tink reference but do not ship (`javax.annotation.*`, `javax.lang.model.*`); a product build needs `-dontwarn`/keep rules, the spike disables shrinking.
@@ -48,25 +48,71 @@ Three bots: two on the normal line, one in the `tc`+ifb shaped container (1.5 Mb
 - Android app and iPad (2026-10-13): iPad Safari 19/20 as student, p50 2.13 s, p95 5.43 s. Android first run 17/20 (p50 2.66 s, max 5.96 s): the three failures fell inside one minute (05:55) together with an iPad ICE timeout, i.e. a local network break; one of them was a spike-app error (`getStats` on a closed peer connection). Android second run 20/20, p50 1.84 s, p95 2.24 s, max 3.15 s. Both runs stay in `metrics.jsonl`.
 - Supervisor-role trials on the PC failed to receive video (7 of 9 timed out): the spike app asked to publish a camera the supervisor grant does not allow. Lesson for WP-3.4: the client must derive what it publishes from the role grants. Results are now grouped by role so this does not mix with student numbers.
 - Teacher tools: mute all and lock/unlock confirmed by the owner ("تعمل تماما"); a non-host rejoin during lock was refused with «المعلمة أغلقت الغرفة».
-- Recording: owner's recording `EG_tsvuJzTfQc36` EGRESS_COMPLETE, 23.4 s MP4 with video and audio, uploaded straight to our bucket (no provider copy). It first failed with S3 SignatureDoesNotMatch: Cloudflare rewrites `Accept-Encoding`, which the AWS SDK for Go (LiveKit egress) signs as `identity`; fixed with an nginx in front of MinIO (spike-only; production uses S3 directly).
+- Recording: owner's recording `EG_tsvuJzTfQc36` EGRESS_COMPLETE, 23.4 s MP4 (2,132,741 bytes; no checksum taken before the purge) with video and audio, uploaded straight to our bucket (no provider copy). It first failed with S3 SignatureDoesNotMatch: Cloudflare rewrites `Accept-Encoding`, which the AWS SDK for Go (LiveKit egress) signs as `identity`; fixed with an nginx in front of MinIO (spike-only; production uses S3 directly).
 - 1.5 Mbit/s participant (container, ~90 s, real room with the owner's devices): joined in 4.2 s; received 360p at ~19 fps from two publishers; quality excellent → good; no audio-only switch needed; 0.67 Mbit/s downstream.
 - Disconnect/rejoin (iPhone): webhooks recorded leave 05:28:22 → join 05:28:27 and leave 05:33:23 → join 05:33:34; `AttendanceProbe` merges them (student-3: 19.4 min incl. trials). Finding for WP-3.2: LiveKit recorders join the room as participants (`EG_…` identities) and must be excluded from attendance.
 
+### Per-student cost derivation (owner question, 2026-10-13)
+8 classes × 60 min per student per month; class of 4–5 students + teacher; supervisor ~5 min per class; downstream 1.0 Mbit/s per participant (0.67 measured with 2–3 videos; 1.5 as a heavy case); prices of 2026-10-12. Per student: 584 participant-min and 96 recorded min (5 students) or 610 and 120 (4 students).
+
+| Students on the platform | Plan | No recording ($/student/month) | Every class recorded |
+| --- | --- | --- | --- |
+| 100 | Ship | 0.73 (5/class) · 0.75 (4/class) | 2.53 · 3.03 |
+| 300 | Ship | 0.63 · 0.67 | 2.51 · 3.03 |
+| 500 | Ship | 0.71 · 0.74 | 2.60 · 3.12 |
+| 500 | Scale | 1.00 · 1.00 | 2.20 · 2.56 |
+| 1000 | Scale | 0.64 · 0.66 | 1.96 · 2.34 |
+| any | Zoom | 2.04 · 2.14 | 3.00 · 3.33 |
+
+At 1.5 Mbit/s add about 0.27 $ per student on Ship. Formula: base fee + participant-minutes over the included amount × minute price + downstream GB over the included amount × GB price + recorded room-minutes over the included amount × transcode price, divided by students.
+
+### Spike-only — do not copy into product
+- Cloudflare quick tunnel: tokens, recordings and the access code pass through Cloudflare; the link changes on restart. Product: WP-1.8 environments.
+- Shared spike access code (also in `?code=` URLs, logged by `php -S`). Product: real authentication and authorization (WP-1.2/1.3).
+- Release APK signed with the debug key, R8 shrinking off; Zoom SDK merged permissions (`READ_PHONE_STATE`, `SYSTEM_ALERT_WINDOW`, …).
+- Recordings on local disk / spike MinIO behind an nginx header fix. Product: S3 `eu-central-1` directly (D-16).
+- `canPublishData=true` for every role, free-text `error` in metrics, Zoom `leave_reason` stored verbatim (see lessons in ADR-005).
+
 ## Verification evidence
 ```
-(pasted below after `bash scripts/verify.sh --all`)
+──────── verify summary (--all) ──────── 2026-10-13, commit 521b52d
+✅ api:pint · ✅ api:phpstan · ✅ api:tests+coverage(80)
+✅ dart:format · ✅ dart:analyze
+✅ flutter:test:packages/sura_core · ✅ flutter:test:apps/family · ✅ flutter:test:apps/teacher
+✅ web:build:apps/family · ✅ web:no-third-party-requests:apps/family
+✅ web:build:apps/teacher · ✅ web:no-third-party-requests:apps/teacher
+✅ guards · ✅ traceability · ✅ traceability:selftest · ✅ roadmap
+Spike gates (outside verify.sh areas): php spikes/video/token-server/tests/run.php → 32 passed, 0 failed ·
+spikes/video/app: flutter analyze → No issues found · flutter test → 9 passed
+php scripts/check-traceability.php --wp WP-0.4 → traceability OK (no IDs owned by WP-0.4)
 ```
+Cleanup 2026-10-13: LiveKit test recordings and the spike MinIO volume purged (`tools/minio-egress.sh purge`); spike server, tunnels and bots stopped (`tools/stop.sh`, no listener left on 27100/29100/29102); `spikes/video/token-server/var/` deleted entirely (event logs, metrics, stats, server/tunnel logs with `?code=` URLs, access code). Zoom's cloud recording (session `0nkBe1ej…`) could be neither fetched nor deleted: Zoom answers 3301 "still being processed" for both (the session had to end first); the owner turns on automatic deletion of cloud recordings in the Zoom account and deletes the Zoom Video SDK app. Owner revokes the spike LiveKit key.
 | Acceptance criterion | Evidence |
 | --- | --- |
 | ADR-005 has «القرار» with the numbers, and D-20 is Closed | `docs/02-architecture/adr/ADR-005-video-provider.md` (Accepted 2026-10-13, results table); `docs/00-governance/decisions.md` D-20 Closed with the owner's approval quoted |
-| Every criterion in the ADR-005 table has a measured result | LiveKit: all eight measured (iOS native waived by the owner; iOS covered through Safari on iPhone and iPad). Zoom: six measured; 1.5 Mbit/s not measured, recording download pending Zoom processing — Zoom was not chosen, so these gaps do not affect the decision. Tables: `spikes/video/results/summary.md`, `join-times.csv` |
+| Every criterion in the ADR-005 table has a measured result | LiveKit: all eight measured (iOS native waived by the owner; iOS covered through Safari on iPhone and iPad; audio-only switch shown only in the preliminary PC run, the owner-device 1.5 Mbit/s run never needed it). Zoom: not measured — 1.5 Mbit/s, recording download (Zoom still processing), live Android join (phone unavailable), live remove, iOS native. The owner closed the WP with these gaps known («اغلق الحزمة», 2026-10-13, after the decision page listed them); Zoom was not chosen. Tables: `spikes/video/results/summary.md`, `join-times.csv` (Android combines both runs: 37/40; second run alone 20/20, p95 2.24 s) |
 
 ## Review findings
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
+| traceability-checker | MAJOR | ADR quoted Android p95 2.24 s (second run) while results combine both runs (37/40, p95 empty) | Fixed: ADR row and acceptance evidence state both runs |
+| traceability-checker | MINOR | Acceptance row vs ADR listed different Zoom gaps; owner waiver covered only iOS | Fixed: gaps reconciled; owner closed with gaps listed on the decision page |
+| traceability-checker | MINOR | "تفوّق في كل معيار" overstated (data region, cost with full recording) | Fixed: ADR wording |
+| traceability-checker | MINOR | Audio-only shown only in the preliminary PC run; no MP4 checksum | Fixed: stated in ADR and notes; checksum not taken (file purged) |
+| traceability-checker | MINOR | D-35 per-student figures not derived | Fixed: derivation table above |
+| traceability-checker | MINOR | `architecture.md:25` still "LiveKit أو Zoom"; demo step 1 wording | Fixed |
+| traceability-checker | MINOR | Endpoint + webhooks: security-reviewer per DoD; UI without goldens/rtl-reviewer | security-reviewer run (row below); goldens and rtl-reviewer waived for spike UI (design §6), RTL checked by screenshot and widget test |
+| traceability-checker | MINOR | D-20/ADR status changed by Claude, an exception to docs-and-plan rule | Accepted: explicit owner approval quoted, announced beforehand on the approval page |
+| privacy-reviewer | MAJOR | `canPublishData=true` for students would be a private adult↔child channel if copied | Fixed: lesson in ADR-005 and "do not copy" list; WP-3.1 tests `canPublishData=false` |
+| privacy-reviewer | MAJOR | "no request outside origin" overstated: default `fontFallbackBaseUrl` points at Google Fonts | Fixed: notes corrected; action for WP-0.5 recorded |
+| privacy-reviewer | MINOR | `/metrics` `room` unvalidated, `error` free text | Fixed: `room` validated with the token pattern; free text noted as spike-only |
+| privacy-reviewer | MINOR | Zoom `leave_reason` carries the display name | Noted: lesson in ADR-005 (store a reason code) |
+| privacy-reviewer | MINOR | Close plan gaps: Platform Studio key, `token-server/var`, Zoom recording delete without fetch, provider session reports | Fixed: T14 and cleanup plan updated; owner asked to revoke keys and delete the Zoom app |
+| privacy-reviewer | MINOR | No "do not copy" list | Fixed: list above |
+| privacy-reviewer | MINOR | LiveKit becomes a processor of child data; not on the PRV-08 register | Fixed: lesson in ADR-005 and D-35 detail |
 
 ## خطوات العرض اليدوي
-1. اكتب لـ Claude: «جهّز تجربة الفيديو». يشغّل الخادم والرابط الآمن ومشاركاً آلياً بكاميرا، ويعطيك صفحة فيها الرابط ورمز التجربة.
+1. اكتب لـ Claude في VS Code: «جهّز محطة مكالمة الفيديو». يشغّل الخادم والرابط الآمن ومشاركاً آلياً بكاميرا، ويعطيك صفحة فيها الرابط ورمز التجربة.
 2. افتح الرابط في Chrome على الحاسوب. المتوقع: شاشة «الدخول إلى غرفة تجريبية» بالعربية ومن اليمين لليسار.
 3. اختر LiveKit، والدور «طالب»، والمقعد 2، واكتب اسم الجهاز ورمز التجربة، ثم اضغط «20 محاولة تلقائية». المتوقع بعد نحو دقيقة ونصف: «انتهت المحاولات»، والوسيط نحو ثانية أو ثانيتين.
 4. ارجع واضغط «دخول». المتوقع: ترى «مشارك آلي 1» بكاميرا ملونة.
