@@ -20,6 +20,8 @@
     video-player-container { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     video-player { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; background: var(--tile); overflow: hidden; }
     ol#trials { margin: 0; padding-inline-start: 22px; font-variant-numeric: tabular-nums; }
+    ul#people { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 15px; }
+    ul#people li { display: flex; gap: 4px; align-items: center; }
   </style>
 </head>
 <body>
@@ -43,11 +45,16 @@
     <button id="trials20" class="secondary" data-t="trials"></button>
     <button id="leave" class="secondary" data-t="leave" hidden></button>
   </div>
+  <div class="row" id="call" hidden>
+    <button class="secondary" id="mic" data-t="micOff"></button>
+    <button id="unlockAudio" data-t="unlockAudio" hidden></button>
+  </div>
   <div class="row" id="host" hidden>
     <button class="secondary" id="muteAll" data-t="muteAll"></button>
     <button class="secondary" id="record" data-t="recordStart"></button>
   </div>
   <p id="status" aria-live="polite"></p>
+  <ul id="people" aria-live="polite"></ul>
   <video-player-container id="videos"></video-player-container>
   <ol id="trials"></ol>
 </main>

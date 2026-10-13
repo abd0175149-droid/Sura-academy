@@ -28,6 +28,21 @@ let stream = null;
 let grant = null;
 let recording = false;
 
+/** Participants with their microphone state, from Zoom's own user records. */
+function renderPeople() {
+  const list = $('people');
+  list.replaceChildren();
+  if (!client) return;
+  for (const u of client.getAllUser()) {
+    const li = document.createElement('li');
+    const mic = u.audio === '' ? `🚫 ${T.noAudio}` : (u.muted ? `🔇 ${T.micMuted}` : `🎤 ${T.micLive}`);
+    li.textContent = `${u.displayName}${u.isHost ? ` (${T.host})` : ''}: ${mic}`;
+    list.appendChild(li);
+  }
+  const me = client.getCurrentUserInfo();
+  $('mic').textContent = me && me.muted ? T.micOn : T.micOff;
+}
+
 function form() {
   return {
     role: isBot ? 'bot' : $('role').value,
@@ -78,6 +93,9 @@ async function join() {
     await client.init('en-US', `${location.origin}/zoom-web/vendor/lib`, { patchJsMedia: true, enforceMultipleVideos: true });
     await client.join(grant.session_name, grant.token, grant.display_name);
     stream = client.getMediaStream();
+    ['user-added', 'user-removed', 'user-updated', 'current-audio-change'].forEach((ev) => client.on(ev, renderPeople));
+    // Safari (and sometimes Chrome) refuses to play audio started outside a tap; Zoom tells us so.
+    client.on('auto-play-audio-failed', () => { $('unlockAudio').hidden = false; $('status').textContent = T.audioBlocked; });
     await stream.startAudio();
     await stream.startVideo();
     const self = await stream.attachVideo(client.getCurrentUserInfo().userId, VideoQuality.Video_360P);
@@ -96,6 +114,8 @@ async function join() {
   console.info(`SPIKE_STATUS join ${JSON.stringify(result)}`);
   $('host').hidden = !grant || !grant.admin_ticket;
   $('leave').hidden = false;
+  $('call').hidden = !client;
+  renderPeople();
   return result;
 }
 
@@ -108,6 +128,9 @@ async function leave() {
   $('videos').replaceChildren();
   $('host').hidden = true;
   $('leave').hidden = true;
+  $('call').hidden = true;
+  $('unlockAudio').hidden = true;
+  $('people').replaceChildren();
 }
 
 function metric(trial, r, mode) {
@@ -158,7 +181,22 @@ $('trials20').addEventListener('click', () => {
 });
 
 $('leave').addEventListener('click', leave);
-$('muteAll').addEventListener('click', () => stream && stream.muteAllAudio());
+$('muteAll').addEventListener('click', async () => {
+  if (!stream) return;
+  try { await stream.muteAllAudio(); $('status').textContent = T.mutedAll; } catch (e) { $('status').textContent = T.error(String(e.reason || e.message || e.type || e)); }
+  renderPeople();
+});
+$('mic').addEventListener('click', async () => {
+  if (!stream) return;
+  try { await (stream.isAudioMuted() ? stream.unmuteAudio() : stream.muteAudio()); } catch (e) { $('status').textContent = T.error(String(e.reason || e.message || e.type || e)); }
+  renderPeople();
+});
+// Runs inside a tap, which is what the browser needs before it plays sound.
+$('unlockAudio').addEventListener('click', async () => {
+  try { await stream.stopAudio(); } catch { /* not started */ }
+  try { await stream.startAudio(); $('unlockAudio').hidden = true; $('status').textContent = ''; } catch (e) { $('status').textContent = T.error(String(e.reason || e.message || e.type || e)); }
+  renderPeople();
+});
 $('record').addEventListener('click', async () => {
   const rec = client.getRecordingClient();
   recording = !recording;

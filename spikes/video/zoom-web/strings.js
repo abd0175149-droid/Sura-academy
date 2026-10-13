@@ -11,6 +11,9 @@ window.SPIKE_STRINGS = {
     trial: (n, total) => `المحاولة ${n} من ${total}`,
     done: (ok, total, p50, p95) => `انتهت المحاولات (${ok} ناجحة من ${total}). الوسيط ${p50} ث، و95% تحت ${p95} ث`,
     error: (m) => `خطأ: ${m}`,
+    micOn: 'تشغيل ميكروفوني', micOff: 'كتم ميكروفوني', unlockAudio: 'تشغيل الصوت',
+    audioBlocked: 'المتصفح أوقف الصوت. اضغط «تشغيل الصوت».',
+    mutedAll: 'تم كتم الجميع.', micMuted: 'مكتوم', micLive: 'يتكلم', noAudio: 'بلا صوت', host: 'مضيف',
     trialLine: (s, token, connected) => `${s} ث · رمز الدخول ${token} مث · الاتصال ${connected} مث`,
   },
 };
