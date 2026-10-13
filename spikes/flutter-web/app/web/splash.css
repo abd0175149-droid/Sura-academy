@@ -1,0 +1,31 @@
+/* Painted from the HTML alone: system fonts only, nothing to download before first paint. */
+:root { color-scheme: light dark; }
+html, body { margin: 0; height: 100%; }
+body { background: #f4f7f7; }
+#splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+  color: #16323a;
+  background: #f4f7f7;
+}
+.splash-mark { width: 96px; height: 96px; }
+.splash-mark polygon { fill: #0e5d6b; }
+.splash-mark circle { fill: #f4f7f7; }
+.splash-name { margin: 8px 0 0; font-size: 28px; font-weight: 600; }
+.splash-state { margin: 0; font-size: 17px; color: #4b6870; }
+@media (prefers-color-scheme: dark) {
+  body, #splash { background: #0e1a1d; color: #e2eef0; }
+  .splash-mark polygon { fill: #6cc3d1; }
+  .splash-mark circle { fill: #0e1a1d; }
+  .splash-state { color: #a5c0c6; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .splash-mark { animation: splash-turn 6s linear infinite; }
+  @keyframes splash-turn { to { transform: rotate(360deg); } }
+}

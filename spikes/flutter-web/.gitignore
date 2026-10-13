@@ -1,0 +1,4 @@
+# Runtime data of the spike server (metrics, screenshots, feedback, CSP reports, run key).
+server/var/
+# Builds (also covered by spikes/**/build/).
+app/build/

@@ -1,0 +1,121 @@
+{
+  "@@locale": "ar",
+  "appTitle": "تجربة Flutter على الويب",
+  "tabReading": "النص المشكول",
+  "tabForm": "النموذج",
+  "tabPayment": "الدفع",
+  "tabVideo": "فيديو",
+  "tabMeasure": "القياس",
+  "tabFeedback": "ملاحظاتك",
+  "webOnly": "هذه الصفحة تعمل في المتصفح فقط.",
+
+  "showDiacritics": "إظهار التشكيل",
+  "textSize": "حجم النص",
+  "textScaleNormal": "عادي",
+  "textScaleLarger": "أكبر",
+  "textScaleLargest": "الأكبر",
+  "fontSampleTitle": "{font} بحجم {size}",
+  "@fontSampleTitle": {
+    "placeholders": {
+      "font": {"type": "String"},
+      "size": {"type": "int"}
+    }
+  },
+  "capture": "التقاط صورة",
+  "captureSent": "وصلت الصورة.",
+  "captureFailed": "تعذّر إرسال الصورة: {reason}",
+  "@captureFailed": {
+    "placeholders": {"reason": {"type": "String"}}
+  },
+
+  "formTitle": "نموذج تجريبي",
+  "nameLabel": "اسم تجريبي",
+  "nameHint": "اكتب أي اسم من خيالك، لا اسماً حقيقياً",
+  "notesLabel": "ملاحظات",
+  "listTitle": "قائمة الدروس",
+  "lessonItem": "الدرس {number}",
+  "@lessonItem": {
+    "placeholders": {"number": {"type": "int"}}
+  },
+  "counterButton": "اضغط هنا",
+  "counterValue": "{count, plural, =0{لم تضغط بعد} =1{ضغطت مرة واحدة} =2{ضغطت مرتين} few{ضغطت {count} مرات} other{ضغطت {count} مرة}}",
+  "@counterValue": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+
+  "paymentIntro": "صفحة دفع وهمية على موقع آخر. لا تُدفع أي أموال.",
+  "payRedirect": "انتقال كامل إلى صفحة الدفع",
+  "payPopup": "صفحة الدفع في نافذة منبثقة",
+  "payFrame": "صفحة الدفع داخل إطار",
+  "payFrameCorp": "داخل إطار يسمح بالتضمين",
+  "payResult": "نتيجة الدفع: {status}",
+  "@payResult": {
+    "placeholders": {"status": {"type": "String"}}
+  },
+  "payStatusPaid": "تم الدفع",
+  "payStatusCancelled": "أُلغي الدفع",
+  "payStatusNone": "لم تصل نتيجة بعد",
+  "payPopupNoOpener": "النافذة المنبثقة لا تستطيع مخاطبة التطبيق",
+  "payClose": "إغلاق الإطار",
+
+  "videoTargetLocal": "خادم محلي",
+  "videoTargetCloud": "LiveKit السحابي",
+  "videoJoin": "دخول الغرفة",
+  "videoLeave": "خروج",
+  "videoConnected": "متصل",
+  "videoConnecting": "جارٍ الاتصال",
+  "videoDisconnected": "غير متصل",
+  "videoFailed": "فشل الاتصال: {reason}",
+  "@videoFailed": {
+    "placeholders": {"reason": {"type": "String"}}
+  },
+  "videoRemoteCount": "{count, plural, =0{لا أحد غيرك في الغرفة} =1{مشارك واحد غيرك} =2{مشاركان غيرك} few{{count} مشاركين غيرك} other{{count} مشاركاً غيرك}}",
+  "@videoRemoteCount": {
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "videoYou": "أنت",
+
+  "measureRuntime": "طريقة التشغيل",
+  "measureWasm": "النسخة السريعة (WebAssembly)",
+  "measureJs": "النسخة العادية (JavaScript)",
+  "measureThreads": "خيوط الرسم",
+  "measureMulti": "متعددة",
+  "measureSingle": "خيط واحد",
+  "measureIsolation": "ترويستا العزل",
+  "measureOn": "مفعّلتان",
+  "measureOff": "غير مفعّلتين",
+  "measureServiceWorker": "عامل الخدمة",
+  "measureSwControlled": "يخدم هذه الصفحة",
+  "measureSwNone": "لا يخدم هذه الصفحة بعد",
+  "measureTimings": "أزمنة هذا التحميل (ملّي ثانية)",
+  "markSplash": "ظهور الشاشة الافتتاحية",
+  "markEntrypoint": "تحميل الكود",
+  "markEngine": "تهيئة المحرك",
+  "markFirstFrame": "أول إطار",
+  "markInteractive": "جاهز للتفاعل",
+  "measureBytes": "حجم ما نُزِّل (كيلوبايت)",
+  "measureVariant": "النسخة الحالية",
+  "autoRun": "تشغيل القياس تلقائياً",
+  "clearCaches": "مسح الذاكرة المؤقتة",
+  "cachesCleared": "مُسحت الذاكرة المؤقتة. أعد تحميل الصفحة.",
+  "notAvailable": "غير متاح",
+
+  "feedbackIntro": "بعد التجربة، اختر نعم أو لا لكل سؤال ثم اضغط «إرسال».",
+  "feedbackQ1": "هل قرأ VoiceOver النص العربي بصوت عربي؟",
+  "feedbackQ2": "هل قرأ أسماء الحقول والأزرار بالعربية؟",
+  "feedbackQ3": "هل قرأ عناصر القائمة واحداً بعد الآخر؟",
+  "feedbackQ4": "هل عملت الكتابة بلوحة المفاتيح العربية دون مشاكل؟",
+  "feedbackQ5": "هل تحرك المؤشر صحيحاً أثناء الكتابة والتعديل؟",
+  "feedbackQ6": "هل ظهر التشكيل سليماً دون تداخل أو قص؟",
+  "feedbackQ7": "هل ثُبّت التطبيق على الشاشة الرئيسية وفُتح دون شريط المتصفح؟",
+  "feedbackQ8": "هل رجعت من صفحة الدفع إلى التطبيق المثبّت وظهرت النتيجة؟",
+  "feedbackQ9": "هل ظهر الفيديو مع ترويستي العزل؟",
+  "yes": "نعم",
+  "no": "لا",
+  "send": "إرسال",
+  "feedbackSent": "وصلت إجاباتك، شكراً.",
+  "feedbackFailed": "تعذّر الإرسال: {reason}",
+  "@feedbackFailed": {
+    "placeholders": {"reason": {"type": "String"}}
+  }
+}
