@@ -63,15 +63,21 @@ async function load(page, target, timeoutMs) {
   await page.goto(target, { waitUntil: 'commit', timeout: timeoutMs });
   await page.waitForFunction(() => window.suraProbe?.startup, null, { timeout: timeoutMs, polling: 50 });
   const startup = JSON.parse(await page.evaluate(() => window.suraProbe.startup));
-  await page.getByRole('tab', { name: 'النموذج' }).click({ timeout: timeoutMs });
-  await page.getByRole('textbox', { name: 'اسم تجريبي' }).waitFor({ timeout: timeoutMs });
+  // A tap can land before Flutter attached its handlers under heavy CPU throttling: retry it.
+  const field = page.getByRole('textbox', { name: 'اسم تجريبي' });
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    await page.getByRole('tab', { name: 'النموذج' }).click({ timeout: Math.max(1000, deadline - Date.now()) });
+    if (await field.waitFor({ timeout: 3000 }).then(() => true, () => false)) break;
+    if (Date.now() > deadline) throw new Error('form tab never opened');
+  }
   const firstInput = await page.evaluate(() => performance.now());
   return { startup, firstInput: Math.round(firstInput), wallMs: Date.now() - t0 };
 }
 
 async function loads() {
   const out = join(spike, 'results/pc-interaction.csv');
-  if (!existsSync(out)) writeFileSync(out, 'profile,variant,phase,wasm,threads,isolated,fcp,interactive,first_input,transfer_kb\n');
+  if (!existsSync(out)) writeFileSync(out, 'profile,variant,phase,wasm,threads,isolated,fcp,interactive,first_input,transfer_kb,status\n');
   const browser = await chromium.launch(LAUNCH);
   const runs = Number(values.runs);
   for (const name of values.profiles.split(',')) {
@@ -86,11 +92,11 @@ async function loads() {
         await throttle(page, profile);
         const runId = run();
         const target = url(variant, runId, { n: profile.label, phase: 'cold' });
-        const r = await load(page, target, timeout);
+        const r = await load(page, target, timeout).catch((e) => ({ error: e.message.split('\n')[0] }));
         record(out, name, variant, 'cold', r);
         if (i === runs - 1) {
           // Keep the last cold context for the warm loads, once the service worker cache is filled.
-          await page.evaluate(() => window.suraSpike.swReady);
+          await page.evaluate(() => window.suraSpike?.swReady).catch(() => null);
           warmContext = context;
           warmUrl = url(variant, runId, { n: profile.label, phase: 'warm' });
           await page.close();
@@ -101,7 +107,7 @@ async function loads() {
       for (let i = 0; i < runs; i++) {
         const page = await warmContext.newPage();
         await throttle(page, profile);
-        record(out, name, variant, 'warm', await load(page, warmUrl, timeout));
+        record(out, name, variant, 'warm', await load(page, warmUrl, timeout).catch((e) => ({ error: e.message.split('\n')[0] })));
         await page.close();
       }
       await warmContext.close();
@@ -111,9 +117,14 @@ async function loads() {
   await browser.close();
 }
 
-function record(file, profile, variant, phase, { startup, firstInput }) {
+function record(file, profile, variant, phase, { startup, firstInput, error }) {
+  if (error) {
+    console.error(`load failed (${profile} ${variant} ${phase}): ${error}`);
+    appendFileSync(file, [profile, variant, phase, '', '', '', '', '', '', '', 'error'].join(',') + '\n');
+    return;
+  }
   const m = startup.marks ?? {};
-  appendFileSync(file, [profile, variant, phase, startup.wasm, startup.threads, startup.isolated, m.fcp ?? '', m.interactive ?? '', firstInput, startup.transfer_kb].join(',') + '\n');
+  appendFileSync(file, [profile, variant, phase, startup.wasm, startup.threads, startup.isolated, m.fcp ?? '', m.interactive ?? '', firstInput, startup.transfer_kb, 'ok'].join(',') + '\n');
 }
 
 // --- checks: isolation flows, requests leaving the origin, accessibility tree ----------------------
