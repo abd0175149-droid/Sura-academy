@@ -9,6 +9,8 @@
 
 ## Owner approvals
 - 2026-10-12, design and tasks approved via the approval page (https://claude.ai/artifact/TPZyiDjkotwuBEUXn66Xmv). Answers: 1 yes · 2 (a) has a Mac usable for a week, **not available yet** · 3 devices: Android phone, iPhone, iPad (plus the Windows PC with Chrome) · 4 three adult helpers available · 5 tools outside the repo approved (`cloudflared`, JDK + Android SDK in `~/tools`, Docker images) · 6 spike-only dependencies approved (`livekit_client`, `flutter_zoom_videosdk`, `http`, `@zoom/videosdk`) · 7 Zoom web probe approved.
+- 2026-10-13, decision page https://claude.ai/artifact/3PMLXBqacfeFS62dVDqseR. Owner: «نعم خلص اعتمد استخدام livekit … اغلق الحزمة ما في داعي لقياس تطبيق الايفون». Applied: ADR-005 → Accepted with the measured numbers; D-20 → Closed (status changed by Claude on this explicit approval, as announced on the approval page); iOS native not measured, waived by the owner. Question 3 (new D-35) was not answered; D-35 was appended as Open per the rules (Claude may add Open rows), for the owner and the legal adviser before W12.
+- Per-student cost requested by the owner (8 × 60 min, 4–5 students + teacher + supervisor ~5 min): LiveKit Ship ~0.63–0.75 $/student/month without recording, 2.5–3.1 $ with every class recorded; Zoom 2.04–2.14 $ and 3.00–3.33 $.
 - Consequence of answer 2/3: iOS native builds (LiveKit and Zoom) wait for the Mac window; everything else proceeds. iPhone/iPad are measured in Safari first.
 
 ## Deviations / surprises
@@ -52,14 +54,21 @@ Three bots: two on the normal line, one in the `tc`+ifb shaped container (1.5 Mb
 
 ## Verification evidence
 ```
-(paste verify --all summary)
+(pasted below after `bash scripts/verify.sh --all`)
 ```
 | Acceptance criterion | Evidence |
 | --- | --- |
+| ADR-005 has «القرار» with the numbers, and D-20 is Closed | `docs/02-architecture/adr/ADR-005-video-provider.md` (Accepted 2026-10-13, results table); `docs/00-governance/decisions.md` D-20 Closed with the owner's approval quoted |
+| Every criterion in the ADR-005 table has a measured result | LiveKit: all eight measured (iOS native waived by the owner; iOS covered through Safari on iPhone and iPad). Zoom: six measured; 1.5 Mbit/s not measured, recording download pending Zoom processing — Zoom was not chosen, so these gaps do not affect the decision. Tables: `spikes/video/results/summary.md`, `join-times.csv` |
 
 ## Review findings
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
 
 ## خطوات العرض اليدوي
-1. …
+1. اكتب لـ Claude: «جهّز تجربة الفيديو». يشغّل الخادم والرابط الآمن ومشاركاً آلياً بكاميرا، ويعطيك صفحة فيها الرابط ورمز التجربة.
+2. افتح الرابط في Chrome على الحاسوب. المتوقع: شاشة «الدخول إلى غرفة تجريبية» بالعربية ومن اليمين لليسار.
+3. اختر LiveKit، والدور «طالب»، والمقعد 2، واكتب اسم الجهاز ورمز التجربة، ثم اضغط «20 محاولة تلقائية». المتوقع بعد نحو دقيقة ونصف: «انتهت المحاولات»، والوسيط نحو ثانية أو ثانيتين.
+4. ارجع واضغط «دخول». المتوقع: ترى «مشارك آلي 1» بكاميرا ملونة.
+5. افتح الرابط على جهاز ثانٍ بدور «معلمة» والمقعد 1. المتوقع: أزرار «كتم الجميع» و«قفل الغرفة» و«بدء التسجيل» تحت الفيديو.
+6. اضغط «بدء التسجيل»، وانتظر دقيقة، ثم «إيقاف التسجيل». يؤكد لك Claude أن الملف وصل إلى جهازه بصورة وصوت.
