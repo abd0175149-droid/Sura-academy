@@ -38,6 +38,14 @@ First LiveKit run was invalid (my bug, kept as `var/metrics-invalid-*.jsonl`): t
 ### 1.5 Mbit/s participant, LiveKit (2026-10-12, PC, preliminary)
 Three bots: two on the normal line, one in the `tc`+ifb shaped container (1.5 Mbit/s each way). The shaped bot joined in 1.63 s. Received video went 360p → 180p (simulcast layer switch) and kept 13–20 fps; quality reached "poor" at 16:23:50, the policy switched to audio-only at 16:23:58 (≥ 5 s poor) and back at 16:24:08 (≥ 10 s good). Median received 360p @ 20 fps; downstream 0.56 Mbit/s for two videos. **Caveat:** an unshaped bot reported "poor" at the same moment, so host CPU load (three browsers + container on one machine) confounds this run; the owner-device session decides CLS-14.
 
+### Owner devices, LiveKit session (2026-10-13, owner + helpers, adults, pseudonyms)
+- Join time, automatic trials as student: PC Chrome 20/20, p50 1.04 s, p95 1.75 s, max 4.0 s · iPhone Safari 19/20, p50 2.85 s, p95 3.73 s. The one iPhone failure was a spike-app bug (`Concurrent modification during iteration` while awaiting stats inside a loop over live participant maps), fixed by iterating copies. First manual joins: PC 1.3 s, iPhone 3.5–7.0 s, Android app 7.9 s, iPad 9.0 s; one early PC attempt failed with an ICE timeout, then worked.
+- Supervisor-role trials on the PC failed to receive video (7 of 9 timed out): the spike app asked to publish a camera the supervisor grant does not allow. Lesson for WP-3.4: the client must derive what it publishes from the role grants. Results are now grouped by role so this does not mix with student numbers.
+- Teacher tools: mute all and lock/unlock confirmed by the owner ("تعمل تماما"); a non-host rejoin during lock was refused with «المعلمة أغلقت الغرفة».
+- Recording: owner's recording `EG_tsvuJzTfQc36` EGRESS_COMPLETE, 23.4 s MP4 with video and audio, uploaded straight to our bucket (no provider copy). It first failed with S3 SignatureDoesNotMatch: Cloudflare rewrites `Accept-Encoding`, which the AWS SDK for Go (LiveKit egress) signs as `identity`; fixed with an nginx in front of MinIO (spike-only; production uses S3 directly).
+- 1.5 Mbit/s participant (container, ~90 s, real room with the owner's devices): joined in 4.2 s; received 360p at ~19 fps from two publishers; quality excellent → good; no audio-only switch needed; 0.67 Mbit/s downstream.
+- Disconnect/rejoin (iPhone): webhooks recorded leave 05:28:22 → join 05:28:27 and leave 05:33:23 → join 05:33:34; `AttendanceProbe` merges them (student-3: 19.4 min incl. trials). Finding for WP-3.2: LiveKit recorders join the room as participants (`EG_…` identities) and must be excluded from attendance.
+
 ## Verification evidence
 ```
 (paste verify --all summary)

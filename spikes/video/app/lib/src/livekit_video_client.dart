@@ -88,8 +88,9 @@ class LiveKitVideoClient extends SpikeVideoClient {
     while (true) {
       final room = _room;
       if (room == null) throw StateError('not connected');
-      for (final p in room.remoteParticipants.values) {
-        for (final pub in p.videoTrackPublications) {
+      // Copies: the awaits below let participants join or leave mid-loop (seen once on iPhone).
+      for (final p in room.remoteParticipants.values.toList()) {
+        for (final pub in p.videoTrackPublications.toList()) {
           final track = pub.track;
           if (track is lk.RemoteVideoTrack) {
             final stats = await track.getReceiverStats();

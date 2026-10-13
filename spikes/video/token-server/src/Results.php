@@ -46,19 +46,21 @@ final class Results
             if (($r['mode'] ?? null) !== 'auto') {
                 continue;
             }
-            $key = implode('|', [$r['provider'], $r['platform'], $r['device'], $r['network']]);
+            // Role too: a supervisor's join differs (no camera allowed) and must not mix with students.
+            $key = implode('|', [$r['provider'], $r['platform'], $r['device'], $r['network'], $r['role'] ?? 'student']);
             $groups[$key][] = ($r['ok'] ?? false) ? (int) $r['t_first_video_ms'] : null;
         }
         ksort($groups);
         $out = [];
         foreach ($groups as $key => $times) {
-            [$provider, $platform, $device, $network] = explode('|', $key);
+            [$provider, $platform, $device, $network, $role] = explode('|', $key);
             $p95 = self::percentile($times, 95);
             $out[] = [
                 'provider' => $provider,
                 'platform' => $platform,
                 'device' => $device,
                 'network' => $network,
+                'role' => $role,
                 'n' => count($times),
                 'ok' => count(array_filter($times, static fn (?int $t): bool => $t !== null)),
                 'p50_s' => self::percentile($times, 50),
