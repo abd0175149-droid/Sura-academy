@@ -61,7 +61,8 @@ fi
 # ---------- Dart / Flutter ----------
 if area dart && [ -f pubspec.yaml ] && touches '^(apps/(family|teacher|kids)/|packages/|pubspec)'; then
   gate "dart:format" dart format --output=none --set-exit-if-changed apps packages
-  gate "dart:analyze" dart analyze --fatal-infos .
+  # apps and packages only, like dart:format: spikes/ are standalone with their own gates (WP-0.4)
+  gate "dart:analyze" dart analyze --fatal-infos apps packages
   for d in packages/* apps/family apps/teacher apps/kids; do
     [ -d "$d/test" ] || continue
     if [ "$MODE" = "--all" ] || changed_files | grep -q "^$d/"; then
