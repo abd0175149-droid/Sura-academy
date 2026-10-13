@@ -41,6 +41,8 @@ try {
                 substr(hash('sha256', $key), 0, 8),
                 is_array($claims) ? 'yes' : 'no',
                 is_array($claims) && isset($claims['exp']) ? ' (expires '.gmdate('Y-m-d H:i', (int) $claims['exp']).' UTC)' : '');
+            $hook = $config->zoomWebhookSecret;
+            printf("webhook secret token: %s\n", $hook === '' ? 'empty' : 'set ('.strlen($hook).' chars, fingerprint '.substr(hash('sha256', $hook), 0, 8).')');
             // What the server itself uses: a key alone as bearer, or a JWT signed with key + secret.
             try {
                 $count = count($zoom->sessions(gmdate('Y-m-d', time() - 7 * 86400), gmdate('Y-m-d')));
