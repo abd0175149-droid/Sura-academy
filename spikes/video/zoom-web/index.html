@@ -34,9 +34,9 @@
       </select>
     </label>
     <label><span data-t="seat"></span><select id="seat"></select></label>
-    <label><span data-t="room"></span><input id="room" value="spike-room" dir="ltr" pattern="[a-z0-9][a-z0-9-]{2,39}" required></label>
-    <label><span data-t="device"></span><input id="device" dir="ltr" pattern="[a-z0-9-]{2,30}" required></label>
-    <label><span data-t="code"></span><input id="code" dir="ltr" required></label>
+    <label><span data-t="room"></span><input id="room" value="spike-room" dir="ltr" pattern="[a-z0-9][a-z0-9-]{2,39}" autocapitalize="off" autocorrect="off" required></label>
+    <label><span data-t="device"></span><input id="device" dir="ltr" pattern="[A-Za-z0-9-]{2,30}" autocapitalize="off" autocorrect="off" required></label>
+    <label><span data-t="code"></span><input id="code" dir="ltr" autocapitalize="off" autocorrect="off" required></label>
   </form>
   <div class="row">
     <button id="join" data-t="join"></button>

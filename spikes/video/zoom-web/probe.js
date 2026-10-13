@@ -33,7 +33,8 @@ function form() {
     role: isBot ? 'bot' : $('role').value,
     seat: $('seat').value,
     room: $('room').value.trim(),
-    device: isBot ? 'bot' : $('device').value.trim(),
+    // iOS capitalises the first letter; the server only accepts a-z 0-9 -.
+    device: isBot ? 'bot' : $('device').value.trim().toLowerCase(),
     code: $('code').value.trim(),
     network: q.get('network') || 'normal',
   };
@@ -116,7 +117,7 @@ function metric(trial, r, mode) {
     provider: 'zoom-web', platform: 'web', device: f.device, network: f.network, role: f.role, room: f.room, mode, trial,
     t_token_ms: r.tToken, t_connected_ms: r.tConnected, t_first_video_ms: r.tVideo, ok: r.tVideo !== null && !r.error,
     ...(r.error ? { error: r.error } : {}),
-  }, { 'x-spike-code': f.code }).catch(() => {});
+  }, { 'x-spike-code': f.code }).catch((e) => { $('status').textContent = T.error(`لم تُحفظ النتيجة: ${e.message}`); });
 }
 
 function percentile(values, p) {
@@ -132,6 +133,8 @@ $('join').addEventListener('click', async () => {
 });
 
 async function runTrials(count) {
+  // Leave a call first: joining while already in a session fails with "duplicated operation".
+  await leave();
   const times = [];
   $('trials').replaceChildren();
   for (let i = 1; i <= count; i++) {

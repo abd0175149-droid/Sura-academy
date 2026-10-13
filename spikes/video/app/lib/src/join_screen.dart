@@ -107,7 +107,8 @@ class _JoinScreenState extends State<JoinScreen> {
       role: _role,
       seat: _seat,
       room: _room.text.trim(),
-      device: _device.text.trim(),
+      // iOS and Android keyboards capitalise the first letter; the server accepts a-z 0-9 - only.
+      device: _device.text.trim().toLowerCase(),
       network: _network,
     );
   }
@@ -198,7 +199,9 @@ class _JoinScreenState extends State<JoinScreen> {
                   labelText: l.device,
                   hintText: l.deviceHint,
                 ),
-                validator: (v) => RegExp(r'^[a-z0-9-]{2,30}$').hasMatch(v ?? '')
+                validator: (v) =>
+                    RegExp(r'^[a-z0-9-]{2,30}$')
+                        .hasMatch((v ?? '').trim().toLowerCase())
                     ? null
                     : 'a-z 0-9 -',
               ),

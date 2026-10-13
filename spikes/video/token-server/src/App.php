@@ -44,7 +44,7 @@ final class App
                 },
             };
         } catch (ApiError $e) {
-            if (str_starts_with($request->path, '/webhooks/')) {
+            if (str_starts_with($request->path, '/webhooks/') || $request->path === '/metrics') {
                 // Rejected provider notifications are otherwise invisible; log the reason only.
                 error_log("[{$requestId}] {$request->path} {$e->status} {$e->errorCode} ".json_encode($e->details));
             }
