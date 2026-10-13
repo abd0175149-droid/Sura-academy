@@ -72,6 +72,7 @@ At 1.5 Mbit/s add about 0.27 $ per student on Ship. Formula: base fee + particip
 - Release APK signed with the debug key, R8 shrinking off; Zoom SDK merged permissions (`READ_PHONE_STATE`, `SYSTEM_ALERT_WINDOW`, …).
 - Recordings on local disk / spike MinIO behind an nginx header fix. Product: S3 `eu-central-1` directly (D-16).
 - `canPublishData=true` for every role, free-text `error` in metrics, Zoom `leave_reason` stored verbatim (see lessons in ADR-005).
+- Shared access/host codes typed by testers, MinIO credentials on command lines, unpinned nginx/Playwright images, webhooks without deduplication.
 
 ## Verification evidence
 ```
@@ -110,6 +111,19 @@ Cleanup 2026-10-13: LiveKit test recordings and the spike MinIO volume purged (`
 | privacy-reviewer | MINOR | Close plan gaps: Platform Studio key, `token-server/var`, Zoom recording delete without fetch, provider session reports | Fixed: T14 and cleanup plan updated; owner asked to revoke keys and delete the Zoom app |
 | privacy-reviewer | MINOR | No "do not copy" list | Fixed: list above |
 | privacy-reviewer | MINOR | LiveKit becomes a processor of child data; not on the PRV-08 register | Fixed: lesson in ADR-005 and D-35 detail |
+| security-reviewer | MAJOR | Any holder of the shared code could claim teacher/substitute and get the admin ticket (and Zoom host) | Fixed: separate host code required for host roles (test `spike CLS-04 host roles need the separate host code`); WP-3.1 lesson: role and identity come from the server-side assignment |
+| security-reviewer | MAJOR | 24-bit code, no attempt limit, reused across restarts | Fixed: two 10-character codes (~49 bits each) regenerated at every `serve.sh` start; 20 wrong codes per client in 10 min → 429 (test `spike CLS-05 repeated wrong codes … throttled`). Codes still appear in bot/probe URLs (spike-only list); `php -S` logs addresses only, not paths |
+| security-reviewer | MINOR | Webhook 401 told the caller which check failed | Fixed: reason logged only |
+| security-reviewer | MINOR | Provider error bodies returned to the client | Fixed: logged; response keeps provider and status |
+| security-reviewer | MINOR | `record/stop` accepted an egress id of another room | Fixed: id must be in ListEgress for the ticket's room |
+| security-reviewer | MINOR | JWT without `exp` accepted | Fixed: `exp` required |
+| security-reviewer | MINOR | Empty ticket secret would pass; chmod after write | Fixed: strict validation, private atomic write |
+| security-reviewer | MINOR | `/metrics` `trial` unbounded | Fixed: 0–1000 (room fixed earlier) |
+| security-reviewer | MINOR | No `Referrer-Policy` / framing protection on pages | Fixed: `no-referrer`, `frame-ancestors 'none'` |
+| security-reviewer | MINOR | Zoom API token sent to any `download_url` host | Fixed: only `zoom.us` hosts (tested) |
+| security-reviewer | MINOR | Webhooks not deduplicated; raw bodies not stored | Deferred to WP-3.2 (lesson: dedupe on provider event id, pair by participant sid, keep raw body) |
+| security-reviewer | MINOR | MinIO passwords on command lines; nginx/Playwright images not pinned by digest; `var/` mounted read-write in the throttled container | Accepted for the spike (services removed, `var/` deleted); listed under "do not copy" |
+| security-reviewer | MINOR | `canPublishData` for every role | Same as privacy MAJOR: lesson for WP-3.1 |
 
 ## خطوات العرض اليدوي
 1. اكتب لـ Claude في VS Code: «جهّز محطة مكالمة الفيديو». يشغّل الخادم والرابط الآمن ومشاركاً آلياً بكاميرا، ويعطيك صفحة فيها الرابط ورمز التجربة.

@@ -37,7 +37,10 @@ final class Jwt
         if ($alg !== 'HS256' || ! is_array($claims)) {
             throw new InvalidArgumentException('unsupported token');
         }
-        if (isset($claims['exp']) && $now >= (int) $claims['exp']) {
+        if (! isset($claims['exp'])) {
+            throw new InvalidArgumentException('token without exp');
+        }
+        if ($now >= (int) $claims['exp']) {
             throw new InvalidArgumentException('token expired');
         }
         if (isset($claims['nbf']) && $now < (int) $claims['nbf']) {

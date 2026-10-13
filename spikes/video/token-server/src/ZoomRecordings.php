@@ -32,6 +32,11 @@ final class ZoomRecordings
     /** Writes the file to $target; returns the bytes written. */
     public function download(array $file, string $target): int
     {
+        // The API token goes only to Zoom: never follow a download_url to another host.
+        $host = (string) parse_url((string) ($file['download_url'] ?? ''), PHP_URL_HOST);
+        if ($host !== 'zoom.us' && ! str_ends_with($host, '.zoom.us')) {
+            throw new ApiError(502, 'provider_error', ['provider' => 'zoom', 'reason' => 'download host not allowed']);
+        }
         [$status, $body] = $this->http->request('GET', (string) $file['download_url'], $this->auth());
         if ($status !== 200) {
             throw new ApiError(502, 'provider_error', ['provider' => 'zoom', 'status' => $status]);

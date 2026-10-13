@@ -23,6 +23,8 @@ final readonly class Config
         /** @var array{endpoint: string, bucket: string, access_key: string, secret: string, region: string}|null */
         public ?array $egressS3 = null,
         public string $accessCode = '',
+        /** Required for teacher/substitute tokens, which carry the admin ticket (security review 2026-10-13). */
+        public string $hostCode = '',
         public string $ticketSecret = '',
         public ?int $windowOpensAt = null,
         public ?int $windowClosesAt = null,
@@ -45,6 +47,7 @@ final readonly class Config
             zoomApiSecret: $env['ZOOM_API_SECRET'] ?? '',
             egressS3: self::egressTarget($varDir),
             accessCode: $local['access_code'],
+            hostCode: $local['host_code'],
             ticketSecret: $local['ticket_secret'],
             windowOpensAt: $time('SPIKE_WINDOW_OPENS_AT'),
             windowClosesAt: $time('SPIKE_WINDOW_CLOSES_AT'),
@@ -78,21 +81,41 @@ final readonly class Config
         return is_array($data) && isset($data['endpoint'], $data['bucket'], $data['access_key'], $data['secret'], $data['region']) ? $data : null;
     }
 
-    /** @return array{access_code: string, ticket_secret: string} */
+    /**
+     * Two typeable 10-character codes (~49 bits each, no look-alike characters) and a 256-bit
+     * ticket secret. tools/serve.sh deletes the file at every start, so codes rotate per session.
+     *
+     * @return array{access_code: string, host_code: string, ticket_secret: string}
+     */
     private static function localSecrets(string $varDir): array
     {
         $file = $varDir.'/spike.json';
         $data = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
-        if (! is_array($data) || ! isset($data['access_code'], $data['ticket_secret'])) {
+        $valid = is_array($data)
+            && is_string($data['access_code'] ?? null) && strlen($data['access_code']) >= 10
+            && is_string($data['host_code'] ?? null) && strlen($data['host_code']) >= 10
+            && is_string($data['ticket_secret'] ?? null) && preg_match('/^[0-9a-f]{64}$/', $data['ticket_secret']) === 1;
+        if (! $valid) {
             @mkdir($varDir, 0700, true);
-            $data = [
-                'access_code' => substr(bin2hex(random_bytes(4)), 0, 6),
-                'ticket_secret' => bin2hex(random_bytes(32)),
-            ];
-            file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT), LOCK_EX);
-            chmod($file, 0600);
+            $data = ['access_code' => self::code(), 'host_code' => self::code(), 'ticket_secret' => bin2hex(random_bytes(32))];
+            $old = umask(0077);
+            $tmp = tempnam($varDir, 'spike');
+            file_put_contents($tmp, json_encode($data, JSON_PRETTY_PRINT), LOCK_EX);
+            rename($tmp, $file);
+            umask($old);
         }
 
         return $data;
+    }
+
+    private static function code(): string
+    {
+        $alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+        $out = '';
+        for ($i = 0; $i < 10; $i++) {
+            $out .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return $out;
     }
 }

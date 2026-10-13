@@ -16,13 +16,17 @@ final class TokenIssuer
 
     public function issue(array $input, int $now): array
     {
-        if (! is_string($input['access_code'] ?? null) || $this->config->accessCode === ''
-            || ! hash_equals($this->config->accessCode, $input['access_code'])) {
+        $code = is_string($input['access_code'] ?? null) ? $input['access_code'] : '';
+        $role = is_string($input['role'] ?? null) ? Role::tryFrom($input['role']) : null;
+        $isHostCode = $this->config->hostCode !== '' && hash_equals($this->config->hostCode, $code);
+        $isParticipantCode = $this->config->accessCode !== '' && hash_equals($this->config->accessCode, $code);
+        // Teacher/substitute tokens carry the admin ticket (and Zoom host rights), so they need the
+        // separate host code; any other role accepts either code.
+        if ($code === '' || ($role !== null && $role->isHost() ? ! $isHostCode : ! ($isParticipantCode || $isHostCode))) {
             throw new ApiError(403, 'forbidden');
         }
 
         $provider = $input['provider'] ?? null;
-        $role = is_string($input['role'] ?? null) ? Role::tryFrom($input['role']) : null;
         $identity = is_string($input['identity'] ?? null) ? $input['identity'] : '';
         $room = is_string($input['room'] ?? null) ? $input['room'] : '';
         $invalid = array_filter([

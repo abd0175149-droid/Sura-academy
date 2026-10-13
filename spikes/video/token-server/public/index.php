@@ -8,6 +8,7 @@ declare(strict_types=1);
  */
 
 use Spike\Video\App;
+use Spike\Video\AttemptLimiter;
 use Spike\Video\Config;
 use Spike\Video\CurlHttpClient;
 use Spike\Video\EventLog;
@@ -25,6 +26,7 @@ $app = new App(
     static fn (): int => time(),
     new CurlHttpClient(),
     metrics: new EventLog($root.'/var/metrics.jsonl'),
+    limiter: new AttemptLimiter($root.'/var/attempts.json'),
     staticRoots: [
         '/' => dirname($root).'/app/build/web',
         '/zoom-web/' => dirname($root).'/zoom-web',

@@ -17,6 +17,8 @@ mkdir -p "$var"
 chmod 700 "$var"
 
 bash "$here/tools/stop.sh" >/dev/null 2>&1 || true
+# New access and host codes (and ticket secret) for every session; forget old wrong-code counts.
+rm -f "$var/spike.json" "$var/attempts.json"
 
 [[ -x "$cloudflared" ]] || { echo "missing $cloudflared (see spikes/video/README.md)" >&2; exit 1; }
 [[ -f "$here/app/build/web/index.html" ]] || echo "note: no web build yet: (cd $here/app && flutter build web --release --no-web-resources-cdn)" >&2
@@ -44,9 +46,11 @@ for _ in $(seq 1 30); do
 done
 
 code="$(php -r 'echo json_decode(file_get_contents($argv[1]), true)["access_code"] ?? "?";' "$var/spike.json" 2>/dev/null || echo '?')"
+host_code="$(php -r 'echo json_decode(file_get_contents($argv[1]), true)["host_code"] ?? "?";' "$var/spike.json" 2>/dev/null || echo '?')"
 cat <<EOF
 link:         $url
-access code:  $code
+access code:  $code   (students, supervisor, bots)
+host code:    $host_code   (teacher and substitute only)
 webhooks:     LiveKit → $url/webhooks/livekit   ·   Zoom → $url/webhooks/zoom
 logs:         $var/server.log · $var/tunnel.log
 EOF

@@ -17,4 +17,5 @@ return [
     'error.provider_error' => 'The video provider rejected the request.',
     'error.not_found' => 'Not found.',
     'error.internal_error' => 'Internal spike server error.',
+    'error.too_many_attempts' => 'Too many wrong attempts. Try again in ten minutes.',
 ];

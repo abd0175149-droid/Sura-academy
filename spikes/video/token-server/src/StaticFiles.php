@@ -50,6 +50,8 @@ final class StaticFiles
                 'Content-Type' => self::TYPES[strtolower(pathinfo($file, PATHINFO_EXTENSION))] ?? 'application/octet-stream',
                 'Cache-Control' => 'no-cache',
                 'X-Content-Type-Options' => 'nosniff',
+                'Referrer-Policy' => 'no-referrer',
+                'Content-Security-Policy' => "frame-ancestors 'none'",
             ];
             if ($prefix === '/zoom-web/') {
                 // SharedArrayBuffer for Zoom's WebAssembly video (gallery view, 720p).

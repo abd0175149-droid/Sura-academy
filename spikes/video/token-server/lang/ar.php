@@ -17,4 +17,5 @@ return [
     'error.provider_error' => 'مزود الفيديو رفض الطلب.',
     'error.not_found' => 'الصفحة غير موجودة.',
     'error.internal_error' => 'خطأ داخلي في خادم التجربة.',
+    'error.too_many_attempts' => 'محاولات خاطئة كثيرة. حاول بعد عشر دقائق.',
 ];

@@ -66,6 +66,7 @@ function config(array $overrides = []): Config
         'zoomSdkKey' => 'fixture-zoom-key',
         'zoomSdkSecret' => ZOOM_SECRET,
         'accessCode' => 'fixture-code',
+        'hostCode' => 'fixture-host-code',
         'ticketSecret' => TICKET_SECRET,
         'windowOpensAt' => null,
         'windowClosesAt' => null,
@@ -81,9 +82,12 @@ function app(?Config $config = null, ?RoomLocks $locks = null, int $now = NOW): 
     return new App($config ?? config(), $locks, $events, static fn (): int => $now, new FakeHttp());
 }
 
-/** POST /token with sensible defaults; returns the Response. */
+/** POST /token with sensible defaults (host roles use the host code); returns the Response. */
 function token(array $body = [], ?App $app = null): Response
 {
+    if (! isset($body['access_code']) && in_array($body['role'] ?? '', ['teacher', 'substitute'], true)) {
+        $body['access_code'] = 'fixture-host-code';
+    }
     $body = array_merge([
         'provider' => 'livekit',
         'role' => 'student',
@@ -457,7 +461,9 @@ test('spike CLS-04 lock through the server stops new tokens', function (): void 
 });
 
 test('spike CLS-10 livekit recording uploads straight to our bucket', function (): void {
-    $http = new FakeHttp(static fn (): array => [200, json_encode(['egressId' => 'EG_1', 'status' => 'EGRESS_STARTING'])]);
+    $http = new FakeHttp(static fn (string $m, string $url): array => str_ends_with($url, '/ListEgress')
+        ? [200, json_encode(['items' => [['egressId' => 'EG_1', 'status' => 'EGRESS_ACTIVE']]])]
+        : [200, json_encode(['egressId' => 'EG_1', 'status' => 'EGRESS_STARTING'])]);
     same(['egress_id' => 'EG_1'], ok(admin(adminApp($http), 'record/start')), 'start result');
     same('https://fixture.livekit.cloud/twirp/livekit.Egress/StartRoomCompositeEgress', $http->calls[0]['url'], 'egress url');
     $req = $http->calls[0]['body'];
@@ -466,12 +472,12 @@ test('spike CLS-10 livekit recording uploads straight to our bucket', function (
     same([EGRESS['bucket'], EGRESS['endpoint'], true, EGRESS['region']], [$s3['bucket'], $s3['endpoint'], $s3['force_path_style'], $s3['region']], 's3 target');
     check(str_starts_with($req['file_outputs'][0]['filepath'], 'spike-room/'), 'object key per room');
     ok(admin(adminApp($http), 'record/stop', ['egress_id' => 'EG_1']));
-    same(['egress_id' => 'EG_1'], $http->calls[1]['body'], 'stop body');
+    same(['egress_id' => 'EG_1'], end($http->calls)['body'], 'stop body');
     error(admin(adminApp(new FakeHttp(static fn (): array => [400, '{"code":"invalid_argument"}'])), 'record/start'), 502, 'provider_error');
 });
 
 test('spike CLS-10 zoom recordings are listed downloaded and deleted permanently', function (): void {
-    $files = ['recording_files' => [['id' => 'F1', 'file_type' => 'MP4', 'file_size' => 3, 'download_url' => 'https://zoom.fixture/rec/F1']]];
+    $files = ['recording_files' => [['id' => 'F1', 'file_type' => 'MP4', 'file_size' => 3, 'download_url' => 'https://zoom.us/rec/F1']]];
     $http = new FakeHttp(static fn (string $m, string $url): array => match (true) {
         $m === 'GET' && str_contains($url, '/rec/F1') => [200, 'mp4'],
         $m === 'GET' => [200, json_encode($files)],
@@ -485,6 +491,12 @@ test('spike CLS-10 zoom recordings are listed downloaded and deleted permanently
     $target = $GLOBALS['tmp'].'/zoom-F1.mp4';
     same(3, $zoom->download($files['recording_files'][0], $target), 'bytes written');
     same('mp4', file_get_contents($target), 'file content');
+    try {
+        $zoom->download(['download_url' => 'https://evil.example/rec/F1'], $target);
+        throw new LogicException('API token sent to a non-Zoom host');
+    } catch (Spike\Video\ApiError $e) {
+        same('provider_error', $e->errorCode, 'refused');
+    }
     $zoom->delete('abc');
     same(['DELETE', 'https://api.zoom.us/v2/videosdk/sessions/abc/recordings?action=delete'], [end($http->calls)['method'], end($http->calls)['url']], 'permanent delete');
 });
@@ -568,6 +580,56 @@ test('spike cost model multiplies the WP-0.4 load literally', function (): void 
     $lk = Spike\Video\Results::liveKitCost($load, recordedShare: 0.0, downMbpsPerParticipant: 1.0, plan: 'ship');
     same(50.0 + 90_000 * 0.0005, $lk['base_and_minutes_usd'], 'livekit ship: $50 incl. 150k, then $0.0005');
     same(round((240_000 * 60 * 1.0 / 8 / 1000 - 250) * 0.12, 2), $lk['bandwidth_usd'], 'bandwidth over 250 GB at $0.12/GB');
+});
+
+// --- security review fixes (2026-10-13) ------------------------------------------------------
+
+test('spike CLS-04 host roles need the separate host code', function (): void {
+    $app = app();
+    error(token(['role' => 'teacher', 'identity' => 'teacher-1', 'access_code' => 'fixture-code'], $app), 403, 'forbidden');
+    error(token(['role' => 'substitute', 'identity' => 'substitute-1', 'access_code' => 'fixture-code'], $app), 403, 'forbidden');
+    ok(token(['role' => 'teacher', 'identity' => 'teacher-1', 'access_code' => 'fixture-host-code'], $app));
+    ok(token(['access_code' => 'fixture-host-code'], $app));
+    ok(token(app: $app));
+});
+
+test('spike CLS-05 repeated wrong codes from one client are throttled', function (): void {
+    $limiter = new Spike\Video\AttemptLimiter($GLOBALS['tmp'].'/attempts-'.bin2hex(random_bytes(4)).'.json', maxFailures: 3, windowSeconds: 600);
+    $app = new App(config(), new RoomLocks($GLOBALS['tmp'].'/l-rl.json'), new EventLog($GLOBALS['tmp'].'/e-rl.jsonl'), static fn (): int => NOW, new FakeHttp(), limiter: $limiter);
+    $req = static fn (string $code, string $ip): Request => new Request('POST', '/token', ['cf-connecting-ip' => $ip], json_encode(['provider' => 'livekit', 'role' => 'student', 'identity' => 'student-1', 'room' => 'spike-room', 'access_code' => $code]));
+    for ($i = 0; $i < 3; $i++) {
+        error($app->handle($req('wrong', '203.0.113.7')), 403, 'forbidden');
+    }
+    error($app->handle($req('fixture-code', '203.0.113.7')), 429, 'too_many_attempts');
+    ok($app->handle($req('fixture-code', '198.51.100.9')));
+});
+
+test('spike jwt without exp is rejected', function (): void {
+    try {
+        Jwt::decode(Jwt::encode(['sub' => 'a'], 'k'), 'k', NOW);
+        throw new LogicException('token without exp accepted');
+    } catch (InvalidArgumentException) {
+    }
+});
+
+test('spike CLS-09 webhook rejections say nothing about why', function (): void {
+    $json = error(webhookApp()->handle(zoomHook(['event' => 'session.user_joined'], NOW, 'wrong-secret')), 401, 'unauthorized');
+    same([], (array) $json['details'], 'no reason in the response');
+    error(webhookApp()->handle(new Request('POST', '/webhooks/zoom', [], json_encode(['event' => 'endpoint.url_validation', 'payload' => ['plainToken' => 'x']]))), 401, 'unauthorized');
+});
+
+test('spike CLS-10 stop recording only for an egress of the same room', function (): void {
+    $http = new FakeHttp(static fn (string $m, string $url): array => str_ends_with($url, '/ListEgress')
+        ? [200, json_encode(['items' => [['egressId' => 'EG_this_room', 'status' => 'EGRESS_ACTIVE']]])]
+        : [200, '{}']);
+    error(admin(adminApp($http), 'record/stop', ['egress_id' => 'EG_other_room']), 404, 'not_found');
+    ok(admin(adminApp($http), 'record/stop', ['egress_id' => 'EG_this_room']));
+    same('StopEgress', basename((string) parse_url(end($http->calls)['url'], PHP_URL_PATH)), 'stopped after the room check');
+});
+
+test('spike provider error bodies stay in the server log', function (): void {
+    $json = error(admin(adminApp(new FakeHttp(static fn (): array => [400, '{"code":"invalid_argument","msg":"bucket spike-recordings"}'])), 'record/start'), 502, 'provider_error');
+    check(! str_contains(json_encode($json), 'bucket'), 'provider body not returned to the client');
 });
 
 // --- runner ----------------------------------------------------------------------------------

@@ -24,12 +24,20 @@ final class App
         private readonly ?EventLog $metrics = null,
         /** @var array<string, string> URL prefix => directory (Flutter web build, Zoom web probe, APK) */
         private readonly array $staticRoots = [],
+        private readonly ?AttemptLimiter $limiter = null,
     ) {}
+
+    private const CODE_PROTECTED = ['/token', '/events', '/metrics'];
 
     public function handle(Request $request): Response
     {
         $requestId = bin2hex(random_bytes(8));
+        $client = $request->header('cf-connecting-ip') ?: 'local';
+        $protected = in_array($request->path, self::CODE_PROTECTED, true);
         try {
+            if ($protected && $this->limiter?->isBlocked($client, ($this->clock)())) {
+                throw new ApiError(429, 'too_many_attempts');
+            }
             return match ([$request->method, $request->path]) {
                 ['GET', '/health'] => Response::json(200, ['ok' => true]),
                 ['POST', '/token'] => Response::json(200, (new TokenIssuer($this->config, $this->locks))->issue($request->json(), ($this->clock)())),
@@ -44,9 +52,14 @@ final class App
                 },
             };
         } catch (ApiError $e) {
-            if (str_starts_with($request->path, '/webhooks/') || $request->path === '/metrics') {
-                // Rejected provider notifications are otherwise invisible; log the reason only.
+            if ($protected && $e->status === 403) {
+                $this->limiter?->fail($client, ($this->clock)());
+            }
+            if (str_starts_with($request->path, '/webhooks/') || $request->path === '/metrics' || $e->errorCode === 'provider_error') {
+                // Rejections and provider errors are logged with their reason; the caller only gets
+                // the code (no hint about which webhook check failed, no provider response body).
                 error_log("[{$requestId}] {$request->path} {$e->status} {$e->errorCode} ".json_encode($e->details));
+                $e = new ApiError($e->status, $e->errorCode, $e->errorCode === 'provider_error' ? array_intersect_key($e->details, array_flip(['provider', 'status'])) : []);
             }
 
             return self::error($e, $requestId);
@@ -135,6 +148,10 @@ final class App
             'record/start' => Response::json(200, ['egress_id' => $liveKit->startRecording($room)]),
             'record/status' => Response::json(200, ['recordings' => $liveKit->recordings($room)]),
             'record/stop' => (static function () use ($liveKit, $room, $body): Response {
+                // Only a recording of this ticket's room can be stopped.
+                if (! in_array((string) ($body['egress_id'] ?? ''), array_column($liveKit->recordings($room), 'egress_id'), true)) {
+                    throw new ApiError(404, 'not_found');
+                }
                 $liveKit->stopRecording($room, (string) ($body['egress_id'] ?? ''));
 
                 return Response::json(200, ['egress_id' => (string) ($body['egress_id'] ?? '')]);
@@ -157,7 +174,7 @@ final class App
             'role' => is_string($in['role'] ?? null) && Role::tryFrom($in['role']) !== null,
             'room' => is_string($in['room'] ?? null) && preg_match('/^[a-z0-9][a-z0-9-]{2,39}$/', $in['room']) === 1,
             'mode' => in_array($in['mode'] ?? null, ['auto', 'manual'], true),
-            'trial' => is_int($in['trial'] ?? null),
+            'trial' => is_int($in['trial'] ?? null) && $in['trial'] >= 0 && $in['trial'] <= 1000,
             'ok' => is_bool($in['ok'] ?? null),
             't_token_ms' => $int($in['t_token_ms'] ?? null),
             't_connected_ms' => $int($in['t_connected_ms'] ?? null),
