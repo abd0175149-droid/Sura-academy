@@ -1,0 +1,123 @@
+{
+  "@@locale": "ar",
+  "appTitle": "تجربة الفيديو",
+  "joinTitle": "الدخول إلى غرفة تجريبية",
+  "provider": "المزود",
+  "zoomWebUnavailable": "Zoom لا يعمل داخل تطبيق Flutter في المتصفح. افتح صفحة Zoom للويب من الرابط نفسه.",
+  "role": "الدور",
+  "roleTeacher": "معلمة",
+  "roleStudent": "طالب",
+  "roleSubstitute": "بديلة",
+  "roleSupervisor": "مشرفة",
+  "roleBot": "مشارك آلي",
+  "seat": "رقم المقعد",
+  "room": "اسم الغرفة",
+  "device": "اسم الجهاز",
+  "deviceHint": "مثل ipad-safari أو android-1",
+  "network": "الشبكة",
+  "networkNormal": "عادية",
+  "networkLimited": "محدودة 1.5 ميغابت",
+  "accessCode": "رمز التجربة",
+  "serverUrl": "عنوان الخادم",
+  "join": "دخول",
+  "autoTrials": "{count} محاولة تلقائية",
+  "@autoTrials": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "leave": "خروج",
+  "microphone": "الميكروفون",
+  "camera": "الكاميرا",
+  "muteAll": "كتم الجميع",
+  "remove": "إخراج",
+  "lockRoom": "قفل الغرفة",
+  "unlockRoom": "فتح الغرفة",
+  "recordStart": "بدء التسجيل",
+  "recordStop": "إيقاف التسجيل",
+  "quality": "جودة الاتصال: {quality}",
+  "@quality": {
+    "placeholders": {
+      "quality": {
+        "type": "String"
+      }
+    }
+  },
+  "qualityExcellent": "ممتازة",
+  "qualityGood": "جيدة",
+  "qualityPoor": "ضعيفة",
+  "qualityLost": "مقطوعة",
+  "qualityUnknown": "غير معروفة",
+  "audioOnly": "وضع الصوت فقط",
+  "joinTime": "زمن الدخول حتى ظهور الفيديو: {seconds} ث",
+  "@joinTime": {
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "waitingVideo": "بانتظار الفيديو…",
+  "trialProgress": "المحاولة {n} من {total}",
+  "@trialProgress": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "trialsDone": "انتهت المحاولات ({ok} ناجحة من {total}). الوسيط {p50} ث، و95% تحت {p95} ث",
+  "@trialsDone": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "p50": {
+        "type": "String"
+      },
+      "p95": {
+        "type": "String"
+      }
+    }
+  },
+  "error": "خطأ: {message}",
+  "@error": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "done": "تم",
+  "you": "أنت",
+  "trialTimes": "رمز الدخول {token} مث · الاتصال {connected} مث",
+  "@trialTimes": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      },
+      "connected": {
+        "type": "String"
+      }
+    }
+  },
+  "trialSeconds": "{n}. {seconds} ث",
+  "@trialSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  }
+}

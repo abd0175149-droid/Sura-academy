@@ -1,0 +1,9 @@
+# Runtime data: event logs, timings, recordings, generated access code
+token-server/var/
+# Zoom Video SDK for Web, fetched by tools/fetch-zoom-web.sh (Zoom licence, ~64 MB)
+zoom-web/vendor/
+# Provider key files under any name (e.g. a Windows "… - Copy"), except the template
+token-server/.env*
+!token-server/.env.example
+# Windows copy metadata written onto the WSL share
+*:Zone.Identifier

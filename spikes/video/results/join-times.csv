@@ -1,0 +1,12 @@
+provider,platform,device,network,role,n,ok,p50_s,p95_s,max_s,meets_nfr
+livekit,android,android,normal,student,40,37,2.06,,5.96,no
+livekit,web,ipad,normal,student,20,19,2.13,5.43,5.43,yes
+livekit,web,ipad,normal,supervisor,7,2,,,6.83,no
+livekit,web,iphone-safari,normal,student,20,19,2.85,3.73,3.73,yes
+livekit,web,pc-chrome,normal,student,20,20,1.04,1.75,4,yes
+livekit,web,pc-chrome,normal,supervisor,9,1,,,8.68,no
+livekit,web,pc-headless-chromium,normal,student,20,20,2.04,2.14,2.28,yes
+zoom-web,web,iphone-safari,normal,student,20,19,7.07,9.55,9.55,yes
+zoom-web,web,pc-chrome,normal,student,20,20,5.46,6.94,7.36,yes
+zoom-web,web,pc-chrome,normal,teacher,1,0,,,,no
+zoom-web,web,pc-headless-chromium,normal,student,20,20,5.62,7.27,7.46,yes
