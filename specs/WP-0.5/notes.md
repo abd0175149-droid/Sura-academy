@@ -3,6 +3,8 @@
 ## Approval
 - 2026-10-13, design and tasks approved via the approval page (https://claude.ai/artifact/1FXNBHetbZJhHTYnyHjobK). Answers: 1 yes · 2 (a) the owner borrows a Chromebook for one session · 3 (a) Claude runs an Android emulator for the screenshots · 4 (b) iPad video under the headers too, using the **existing WP-0.4 LiveKit Cloud key** (not revoked yet; the spike server reads it from `spikes/video/token-server/.env` at runtime, Claude never opens the file) · 5 tools and spike dependencies approved · 6 gate change approved.
 
+- 2026-10-13, decisions approved via the decisions page (https://claude.ai/artifact/9YoafxShs3Xebpw6pogyUD): «1 نعم · 2 أ · 3 أ · 4 أ · 5 أ» → 1 ADR-010 settings accepted · 2 isolation headers stay off · 3 CR-003 numbers approved as proposed · 4 host Noto Color Emoji / Noto Sans Symbols on our origin (WP-1.6) · 5 close without the Chromebook; it is measured in WP-5.3. Applied: ADR-010 → Accepted, CR-003 → Approved, D-22 → Approved (detail added), status.md approvals row.
+
 ## Decisions applied
 - D-22 (Default, needs CR-003): measured against splash LCP ≤ 2.5 s, interactive ≤ 5 s first load / ≤ 2 s later loads; final numbers proposed to the owner.
 - ADR-010 (Proposed): every initial setting exercised; status changes only with the owner's explicit approval.
@@ -31,15 +33,55 @@
 - **Diacritics:** iPad Safari (CanvasKit) and Android (native) render the vocalized samples the same; on the web the emoji and ☪ are boxes (fallback fonts not hosted), on Android they show (system fonts).
 - **Emulator:** `/dev/kvm` is not usable by this user (not in group `kvm`; needs a one-time admin command). The real phone's screenshots cover the Android side; emulator shots skipped unless the owner wants them.
 
+## Spec text for the owner (`spec/18`, row «الأداء»), after CR-003
+Human-only file; the owner pastes this in place of the current performance row:
+
+```
+| الأداء | الموقع العام ولوحة الإدارة: تحميل الصفحة الرئيسية أقل من 2.5 ثانية (LCP) على جهاز متوسط واتصال 4G. تطبيق الأسرة وبوابة المعلمة (Flutter على الويب، CR-003): الشاشة الافتتاحية أقل من 2.5 ثانية (LCP)، والتطبيق جاهز للتفاعل خلال 5 ثوانٍ في التحميل الأول و2 ثانية في التحميل اللاحق على الأجهزة المرجعية (iPad، هاتف Android متوسط، كروم بوك) وفي المختبر لمسار WebAssembly، وخلال 6 ثوانٍ و3.5 ثانية لمسار JavaScript في المختبر؛ القيم عند 75% من 10 تحميلات على الأقل، والمختبر Chrome بملف «Fast 4G» ومعالج أبطأ 4 مرات؛ زمن استجابة API عند 95% من الطلبات أقل من 800 ملّي ثانية دون التكاملات | اختبار حمل ومراقبة مستمرة؛ قياس المختبر والأجهزة المرجعية |
+```
+
+## Hand-offs
+- **WP-1.6:** remove `dir="rtl"` from `apps/family/web/index.html` (and `apps/teacher`), keep `lang="ar"`; host Noto Color Emoji and Noto Sans Symbols under the app's `fontFallbackBaseUrl` (owner «4 أ»); ship IBM Plex Sans Arabic 400/600 and Noto Naskh Arabic 400 only; adopt the spike's bootstrap marks, HTML splash, service worker and CSP (ADR-010 §5–7); investigate the VoiceOver gaps (control names, list navigation) on iPad.
+- **WP-0.6 (PayTabs):** a full-page redirect to the hosted page and back works, including from the installed iPad app; with isolation headers off, popups and iframes work too.
+- **WP-5.3:** measure the Chromebook (owner «5 أ») and re-run CR-003's two setups; move `tools/measure.mjs` to `scripts/web`.
+- **WP-2.1 / WP-4.5:** a «استمع» control, if wanted, plays teacher-recorded audio (CNT-02), not device text-to-speech (owner's verdict).
+- **Owner:** revoke the WP-0.4 LiveKit Cloud key now that WP-0.5 no longer needs it (still on the WP-0.4 to-do list).
+
 ## Verification evidence
+`bash scripts/verify.sh --all` (2026-10-13, branch `wp/WP-0.5-flutter-web-spike`):
 ```
-(paste verify --all summary)
+──────── verify summary (--all) ────────
+✅ api:pint
+✅ api:phpstan
+✅ api:tests+coverage(80)
+✅ dart:format
+✅ dart:analyze
+✅ flutter:test:packages/sura_core
+✅ flutter:test:apps/family
+✅ flutter:test:apps/teacher
+✅ web:build:apps/family
+✅ web:no-third-party-requests:apps/family
+✅ web:build:apps/teacher
+✅ web:no-third-party-requests:apps/teacher
+✅ guards
+✅ traceability
+✅ traceability:selftest
+✅ roadmap
 ```
+Spike gates (outside `verify.sh`): `dart format --set-exit-if-changed` ok · `flutter analyze` no issues · `flutter test` 11 passed · `php server/tests/run.php` 20 passed · `check-no-third-party.mjs` on the spike WASM build: bootstrap ok, wasm 20 and js 20 requests, all to our origin.
+
 | Acceptance criterion | Evidence |
 | --- | --- |
-| ADR-010 Accepted with final settings | |
-| D-22 numbers proposed to the owner (CR-003 approve or amend) | |
-| Written decision on the isolation headers | |
+| ADR-010 Accepted with final settings | `docs/02-architecture/adr/ADR-010-flutter-web-delivery.md`: status Accepted (owner «1 نعم», 2026-10-13); measured table and decisions §1–8 |
+| D-22 numbers proposed to the owner (CR-003 approve or amend) | `results/summary.md`, `load-times.csv`, `pc-interaction*.csv`; decisions page https://claude.ai/artifact/9YoafxShs3Xebpw6pogyUD; owner «3 أ» → CR-003 Approved, D-22 Approved; spec text for `spec/18` above |
+| Written decision on the isolation headers | ADR-010 §3 (off) with `results/isolation.md` (popup and cross-origin iframe break under COOP/COEP; redirect and LiveKit work either way) and the p75 comparison (no start-up gain); owner «2 أ» |
+| Deliverable 1: vocalized page, two fonts, 16/24/32, diacritics switch | `app/lib/src/reading/`; tests `spike CNT-08 …` (4); iPad q6 yes |
+| Deliverable 2: Arabic form, list, button, semantics on | `app/lib/src/form/`; `results/a11y.md`; test `spike NFR-a11y …` (2); iPad q4/q5 yes, q2/q3 no (risk recorded) |
+| Deliverable 3: WASM and JS builds, with and without COOP/COEP | `tools/build.sh`, `server/src/BuildFiles.php`; tests `spike NFR-isolation …` (2) |
+| Deliverable 4: splash, interactive cold/warm, bundle size | `results/summary.md` (240 PC loads + 40 iPad + 19 Android), `results/sizes.csv` |
+| Deliverable 5: payment redirect and return, both header modes | `results/isolation.md`; iPad q8 yes (from the installed app) |
+| Deliverable 6: install with a custom service worker | `app/web/sw.js`, `manifest.json`; warm loads 0 KB downloaded; iPad q7 yes |
+| Deliverable 7: diacritics screenshots, web vs Android | `results/shots/ipad-safari-js-scale-1.0.png`, `results/shots/android-app-scale-1.0.png` (same shaping; web shows emoji as boxes) |
 
 ## Review findings
 | Agent | Severity | Finding | Resolution |
