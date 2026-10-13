@@ -84,5 +84,17 @@
   "no": "No",
   "send": "Send",
   "feedbackSent": "Your answers arrived, thank you.",
-  "feedbackFailed": "Could not send: {reason}"
+  "feedbackFailed": "Could not send: {reason}",
+  "listenTitle": "Listen (experiment)",
+  "listenNoVoice": "No Arabic voice on this device.",
+  "listenOnDevice": "on device",
+  "listenOnline": "online",
+  "listenStory": "Listen to the story",
+  "listenStoryPlain": "Story without diacritics",
+  "listenWords": "Hard words",
+  "listenClassTime": "Class time",
+  "listenStop": "Stop",
+  "feedbackQ10": "Was the «Listen» voice clear and understandable?",
+  "feedbackQ11": "Did it pronounce the vocalized words correctly?",
+  "feedbackQ12": "Did it read the class time and the link understandably?"
 }

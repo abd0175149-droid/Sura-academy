@@ -54,6 +54,7 @@ $csv = fopen($results.'/load-times.csv', 'w');
 $cols = ['device', 'network', 'variant', 'phase', 'wasm', 'threads', 'isolated', 'sw', 'semantics', 'fcp', 'lcp', 'entrypoint', 'engine', 'first_frame', 'interactive', 'transfer_kb', 'browser'];
 fputcsv($csv, $cols, escape: '');
 $groups = [];
+$hidden = [];
 foreach ($metrics as $m) {
     $marks = $m['marks'] ?? [];
     $ua = (string) ($m['ua'] ?? '');
@@ -73,6 +74,12 @@ foreach ($metrics as $m) {
     ];
     fputcsv($csv, $row, escape: '');
     if (($m['phase'] ?? '') === 'manual') {
+        continue;
+    }
+    // A load with no first paint was never on screen (screen locked, background tab, prerender,
+    // link-preview browser): it measures nothing a user would see. Counted, not summarized.
+    if (! isset($marks['fcp']) && ! isset($marks['lcp'])) {
+        $hidden[] = $m['device'].' '.$m['variant'].' '.$m['phase'].' ('.trim($browser).')';
         continue;
     }
     $key = implode(' | ', [$m['device'], $m['network'], $m['variant'], $m['phase']]);
@@ -98,6 +105,13 @@ foreach ($groups as $key => $g) {
         fmt(pct($splash, .5)), fmt(pct($splash, .95)), fmt(pct($inter, .5)), fmt(pct($inter, .95)),
         pct(array_values(array_filter($g['transfer'], 'is_numeric')), .5) ?? '—', $ok ? 'yes' : 'no');
 }
+
+if ($hidden !== []) {
+    $out[] = '';
+    $out[] = 'Left out: '.count($hidden).' loads without a first paint (page not on screen): '.implode('; ', array_map(static fn ($k, $v) => "{$k} ×{$v}", array_keys(array_count_values($hidden)), array_count_values($hidden))).'.';
+}
+$out[] = '';
+$out[] = 'Device loads went through a Cloudflare quick tunnel to this machine, which served them gzip (iPad ~4,435 KB, Android ~3,250 KB per cold load), not brotli as a CDN would (see the size table).';
 
 // Bundle sizes: the files each engine path downloads on a cold load (sizes.csv, brotli as served).
 $sizes = [];

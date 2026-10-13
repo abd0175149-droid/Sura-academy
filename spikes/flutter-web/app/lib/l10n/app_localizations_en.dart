@@ -300,4 +300,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String feedbackFailed(String reason) {
     return 'Could not send: $reason';
   }
+
+  @override
+  String get listenTitle => 'Listen (experiment)';
+
+  @override
+  String get listenNoVoice => 'No Arabic voice on this device.';
+
+  @override
+  String get listenOnDevice => 'on device';
+
+  @override
+  String get listenOnline => 'online';
+
+  @override
+  String get listenStory => 'Listen to the story';
+
+  @override
+  String get listenStoryPlain => 'Story without diacritics';
+
+  @override
+  String get listenWords => 'Hard words';
+
+  @override
+  String get listenClassTime => 'Class time';
+
+  @override
+  String get listenStop => 'Stop';
+
+  @override
+  String get feedbackQ10 => 'Was the «Listen» voice clear and understandable?';
+
+  @override
+  String get feedbackQ11 => 'Did it pronounce the vocalized words correctly?';
+
+  @override
+  String get feedbackQ12 =>
+      'Did it read the class time and the link understandably?';
 }

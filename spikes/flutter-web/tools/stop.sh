@@ -12,3 +12,4 @@ for file in "$var"/*.pid; do
   rm -f "$file"
 done
 docker rm -f sura-spike-livekit >/dev/null 2>&1 || true
+"${ANDROID_HOME:-$HOME/tools/android-sdk}/platform-tools/adb" emu kill >/dev/null 2>&1 || true

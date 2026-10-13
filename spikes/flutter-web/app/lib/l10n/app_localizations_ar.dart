@@ -300,4 +300,40 @@ class AppLocalizationsAr extends AppLocalizations {
   String feedbackFailed(String reason) {
     return 'تعذّر الإرسال: $reason';
   }
+
+  @override
+  String get listenTitle => 'استمع (تجربة)';
+
+  @override
+  String get listenNoVoice => 'لا يوجد صوت عربي على هذا الجهاز.';
+
+  @override
+  String get listenOnDevice => 'على الجهاز';
+
+  @override
+  String get listenOnline => 'عبر الإنترنت';
+
+  @override
+  String get listenStory => 'استمع إلى القصة';
+
+  @override
+  String get listenStoryPlain => 'القصة دون تشكيل';
+
+  @override
+  String get listenWords => 'كلمات صعبة';
+
+  @override
+  String get listenClassTime => 'موعد الحصة';
+
+  @override
+  String get listenStop => 'إيقاف';
+
+  @override
+  String get feedbackQ10 => 'هل كان صوت «استمع» واضحاً ومفهوماً؟';
+
+  @override
+  String get feedbackQ11 => 'هل نطق الكلمات المشكولة صحيحاً؟';
+
+  @override
+  String get feedbackQ12 => 'هل قرأ موعد الحصة والرابط بشكل مفهوم؟';
 }

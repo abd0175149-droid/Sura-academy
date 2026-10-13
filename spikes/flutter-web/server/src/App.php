@@ -47,7 +47,7 @@ final class App
 
             return match ([$request->method, $request->path]) {
                 ['GET', '/health'] => Response::json(200, ['ok' => true]),
-                ['GET', '/'], ['GET', '/start'] => $this->page(Pages::start($request)),
+                ['GET', '/'], ['GET', '/start'] => $this->page(Pages::start($request, is_file($this->config->apkDir.'/app-arm64-v8a-release.apk') || is_file($this->config->apkDir.'/app-release.apk'))),
                 ['GET', '/auto'] => $this->page(Pages::auto($request)),
                 ['GET', '/auto.js'] => $this->asset('auto.js', 'text/javascript; charset=utf-8'),
                 ['GET', '/pages.css'] => $this->asset('pages.css', 'text/css; charset=utf-8'),
@@ -91,7 +91,11 @@ final class App
 
     private function apk(): Response
     {
-        $file = $this->config->apkDir.'/app-release.apk';
+        // Split per ABI (tools/build.sh --apk): phones get arm64; a fat APK if that is what exists.
+        $file = $this->config->apkDir.'/app-arm64-v8a-release.apk';
+        if (! is_file($file)) {
+            $file = $this->config->apkDir.'/app-release.apk';
+        }
         if (! is_file($file)) {
             throw new ApiError(404, 'not_found');
         }
@@ -146,8 +150,14 @@ final class App
         in_array($device, self::DEVICES, true) || self::invalid('device');
         preg_match(self::VARIANT, $variant) === 1 || self::invalid('variant');
         in_array($request->q('diacritics'), ['on', 'off'], true) || self::invalid('diacritics');
-        in_array($request->q('scale'), ['1.0', '1.3', '2.0'], true) || self::invalid('scale');
-        $name = sprintf('%s-%s-%s-%s-%s-%s.png', gmdate('Ymd\THis\Z', ($this->clock)()), $device, str_replace('/', '-', $variant), $request->q('diacritics'), $request->q('scale'), bin2hex(random_bytes(3)));
+        // dart2js prints 1.0 as "1"; the VM and dart2wasm print "1.0".
+        $scale = match ($request->q('scale')) {
+            '1', '1.0' => '1.0',
+            '1.3' => '1.3',
+            '2', '2.0' => '2.0',
+            default => self::invalid('scale'),
+        };
+        $name = sprintf('%s-%s-%s-%s-%s-%s.png', gmdate('Ymd\THis\Z', ($this->clock)()), $device, str_replace('/', '-', $variant), $request->q('diacritics'), $scale, bin2hex(random_bytes(3)));
         Store::put($this->config->varDir.'/shots', $name, $request->body);
 
         return new Response(204);
@@ -157,13 +167,21 @@ final class App
     {
         self::limit($request, 4 * 1024);
         $data = $request->json();
-        array_diff(array_keys($data), ['device', 'variant', 'answers']) === [] || self::invalid('body');
+        array_diff(array_keys($data), ['device', 'variant', 'answers', 'voices']) === [] || self::invalid('body');
         in_array($data['device'] ?? null, self::DEVICES, true) || self::invalid('device');
         preg_match(self::VARIANT, (string) ($data['variant'] ?? 'native') ?: 'native') === 1 || self::invalid('variant');
         $answers = $data['answers'] ?? null;
         (is_array($answers) && $answers !== []) || self::invalid('answers');
         foreach ($answers as $q => $a) {
-            (preg_match('/^q[1-9]$/', (string) $q) === 1 && in_array($a, ['yes', 'no'], true)) || self::invalid('answers');
+            (preg_match('/^q([1-9]|1[0-2])$/', (string) $q) === 1 && in_array($a, ['yes', 'no'], true)) || self::invalid('answers');
+        }
+        // Device voice names for the «استمع» probe: short strings and a flag, nothing else.
+        $voices = $data['voices'] ?? [];
+        (is_array($voices) && count($voices) <= 20) || self::invalid('voices');
+        foreach ($voices as $v) {
+            (is_array($v) && array_keys($v) === ['name', 'lang', 'on_device'] && is_string($v['name']) && mb_strlen($v['name']) <= 80
+                && is_string($v['lang']) && preg_match('/^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*$/', $v['lang']) === 1 && is_bool($v['on_device']))
+                || self::invalid('voices');
         }
         Store::append($this->config->varDir.'/feedback.jsonl', $data + ['received_at' => ($this->clock)()]);
 

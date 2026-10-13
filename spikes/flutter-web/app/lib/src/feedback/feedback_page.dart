@@ -27,6 +27,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
       l10n.feedbackQ4,
       l10n.feedbackQ5, //
       l10n.feedbackQ6, l10n.feedbackQ7, l10n.feedbackQ8, l10n.feedbackQ9,
+      l10n.feedbackQ10,
+      l10n.feedbackQ11,
+      l10n.feedbackQ12,
     ];
     return ListView(
       padding: const EdgeInsetsDirectional.all(16),
@@ -79,6 +82,11 @@ class _FeedbackPageState extends State<FeedbackPage> {
       await SpikeApi().postFeedback({
         'device': browser.queryParam('d'),
         'variant': browser.pageMeta('variant'),
+        // Names of the device's Arabic voices (no personal data): which engine «استمع» used.
+        'voices': [
+          for (final v in browser.arabicVoices().take(20))
+            {'name': v.name, 'lang': v.lang, 'on_device': v.onDevice},
+        ],
         'answers': {
           for (final e in _answers.entries)
             'q${e.key + 1}': e.value ? 'yes' : 'no',

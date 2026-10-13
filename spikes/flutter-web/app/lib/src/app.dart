@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import 'api.dart';
 import 'feedback/feedback_page.dart';
 import 'form/form_page.dart';
+import 'listen/listen_card.dart';
 import 'measure/measure_page.dart';
 import 'payment/payment_page.dart';
 import 'platform/browser.dart' as browser;
@@ -76,6 +77,7 @@ class _Home extends StatelessWidget {
           child: TabBarView(
             children: [
               ReadingPage(
+                speaker: browser.isBrowser ? const BrowserSpeaker() : null,
                 onCapture: (png, meta) => api.postShot(png, {
                   ...meta,
                   'device': browser.queryParam('d'),

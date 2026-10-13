@@ -275,11 +275,26 @@ test('spike security shot must be a PNG', function (): void {
     error(post('/shots?device=../../x&variant=wasm/iso&diacritics=on&scale=1.0', $png, ['content-type' => 'image/png'], app($cfg)), 422, 'validation_failed');
 });
 
+test('spike CNT-08 shot scale is accepted as JavaScript prints it', function (): void {
+    // dart2js prints 1.0 as "1" (owner's iPad run, 2026-10-13: every capture got 422).
+    $cfg = config();
+    $png = "\x89PNG\r\n\x1a\n".str_repeat("\0", 64);
+    foreach (['1' => '1.0', '2' => '2.0', '1.3' => '1.3'] as $sent => $stored) {
+        same(204, post('/shots?device=ipad-safari&variant=js/plain&diacritics=on&scale='.$sent, $png, ['content-type' => 'image/png'], app($cfg))->status, 'scale '.$sent);
+        check(glob($cfg->varDir.'/shots/*-ipad-safari-js-plain-on-'.$stored.'-*.png') !== [], 'stored as '.$stored);
+    }
+    error(post('/shots?device=ipad-safari&variant=js/plain&diacritics=on&scale=3', $png, ['content-type' => 'image/png'], app($cfg)), 422, 'validation_failed');
+});
+
 test('spike security feedback accepts only yes/no answers', function (): void {
     $ok = json_encode(['device' => 'ipad-safari', 'variant' => 'js/plain', 'answers' => ['q1' => 'yes', 'q9' => 'no']]);
     same(204, post('/feedback', $ok)->status, 'valid');
     error(post('/feedback', json_encode(['device' => 'ipad-safari', 'variant' => 'js/plain', 'answers' => ['q1' => 'maybe']])), 422, 'validation_failed');
     error(post('/feedback', json_encode(['device' => 'ipad-safari', 'variant' => 'js/plain', 'answers' => ['note' => 'yes']])), 422, 'validation_failed');
+    $voices = [['name' => 'Majed', 'lang' => 'ar-SA', 'on_device' => true], ['name' => 'Google العربية', 'lang' => 'ar', 'on_device' => false]];
+    same(204, post('/feedback', json_encode(['device' => 'ipad-safari', 'variant' => 'js/plain', 'voices' => $voices, 'answers' => ['q10' => 'yes', 'q12' => 'no']]))->status, 'listen questions and voices');
+    error(post('/feedback', json_encode(['device' => 'ipad-safari', 'variant' => 'js/plain', 'voices' => [['name' => 'x', 'lang' => 'ar', 'on_device' => true, 'note' => 'free text']], 'answers' => ['q1' => 'yes']])), 422, 'validation_failed');
+    error(post('/feedback', json_encode(['device' => 'ipad-safari', 'variant' => 'js/plain', 'answers' => ['q13' => 'yes']])), 422, 'validation_failed');
 });
 
 // --- LiveKit tokens (video under the isolation headers) ---------------------------------------------

@@ -607,6 +607,78 @@ abstract class AppLocalizations {
   /// In ar, this message translates to:
   /// **'تعذّر الإرسال: {reason}'**
   String feedbackFailed(String reason);
+
+  /// No description provided for @listenTitle.
+  ///
+  /// In ar, this message translates to:
+  /// **'استمع (تجربة)'**
+  String get listenTitle;
+
+  /// No description provided for @listenNoVoice.
+  ///
+  /// In ar, this message translates to:
+  /// **'لا يوجد صوت عربي على هذا الجهاز.'**
+  String get listenNoVoice;
+
+  /// No description provided for @listenOnDevice.
+  ///
+  /// In ar, this message translates to:
+  /// **'على الجهاز'**
+  String get listenOnDevice;
+
+  /// No description provided for @listenOnline.
+  ///
+  /// In ar, this message translates to:
+  /// **'عبر الإنترنت'**
+  String get listenOnline;
+
+  /// No description provided for @listenStory.
+  ///
+  /// In ar, this message translates to:
+  /// **'استمع إلى القصة'**
+  String get listenStory;
+
+  /// No description provided for @listenStoryPlain.
+  ///
+  /// In ar, this message translates to:
+  /// **'القصة دون تشكيل'**
+  String get listenStoryPlain;
+
+  /// No description provided for @listenWords.
+  ///
+  /// In ar, this message translates to:
+  /// **'كلمات صعبة'**
+  String get listenWords;
+
+  /// No description provided for @listenClassTime.
+  ///
+  /// In ar, this message translates to:
+  /// **'موعد الحصة'**
+  String get listenClassTime;
+
+  /// No description provided for @listenStop.
+  ///
+  /// In ar, this message translates to:
+  /// **'إيقاف'**
+  String get listenStop;
+
+  /// No description provided for @feedbackQ10.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل كان صوت «استمع» واضحاً ومفهوماً؟'**
+  String get feedbackQ10;
+
+  /// No description provided for @feedbackQ11.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل نطق الكلمات المشكولة صحيحاً؟'**
+  String get feedbackQ11;
+
+  /// No description provided for @feedbackQ12.
+  ///
+  /// In ar, this message translates to:
+  /// **'هل قرأ موعد الحصة والرابط بشكل مفهوم؟'**
+  String get feedbackQ12;
 }
 
 class _AppLocalizationsDelegate

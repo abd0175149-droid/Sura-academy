@@ -23,8 +23,14 @@ if [[ "${1:-}" == "--apk" ]]; then
   export JAVA_HOME="${JAVA_HOME:-$HOME/tools/jdk-21}"
   export ANDROID_HOME="${ANDROID_HOME:-$HOME/tools/android-sdk}"
   export PATH="$JAVA_HOME/bin:$PATH"
-  # The run key lets the emulator post its screenshot; it lives in server/var (git-ignored).
+  # The run key lets the phone and the emulator post screenshots; it lives in server/var (git-ignored).
   key="$(php -r '$d = json_decode((string) @file_get_contents($argv[1]), true); echo $d["run_key"] ?? "";' "$here/server/var/spike.json")"
   [[ -n "$key" ]] || { echo "start the server once first (tools/serve.sh) so it creates the run key" >&2; exit 1; }
-  flutter build apk --release --dart-define=SPIKE_KEY="$key" --dart-define=SPIKE_SERVER=http://10.0.2.2:27200/
+  # Server URL: the app tunnel when one is running (real phone and emulator both reach it),
+  # otherwise the emulator's view of this machine. Rebuild after every new tunnel.
+  server="$(cat "$here/server/var/app.url" 2>/dev/null || true)"
+  [[ "$server" == https://* ]] || server="http://10.0.2.2:27200"
+  flutter build apk --release --split-per-abi --target-platform android-arm64,android-x64 \
+    --dart-define=SPIKE_KEY="$key" --dart-define=SPIKE_SERVER="$server/"
+  echo "apk for: $server"
 fi

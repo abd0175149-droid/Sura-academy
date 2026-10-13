@@ -143,3 +143,42 @@ Future<void> clearCaches() async {
     await web.window.caches.delete(k.toDart).toDart;
   }
 }
+
+typedef SpeechVoice = ({String name, String lang, bool onDevice});
+
+List<SpeechVoice> arabicVoices() {
+  final voices = <SpeechVoice>[];
+  for (final v in web.window.speechSynthesis.getVoices().toDart) {
+    if (v.lang.toLowerCase().startsWith('ar')) {
+      voices.add((name: v.name, lang: v.lang, onDevice: v.localService));
+    }
+  }
+  // On-device voices first: network voices send the text to the browser vendor (child privacy).
+  voices.sort((a, b) => (a.onDevice == b.onDevice) ? 0 : (a.onDevice ? -1 : 1));
+  return voices;
+}
+
+bool speak(String text, {required String voiceName, double rate = 0.9}) {
+  final synth = web.window.speechSynthesis;
+  web.SpeechSynthesisVoice? voice;
+  for (final v in synth.getVoices().toDart) {
+    if (v.name == voiceName) voice = v;
+  }
+  if (voice == null) return false;
+  synth.cancel();
+  final utterance = web.SpeechSynthesisUtterance(text)
+    ..voice = voice
+    ..lang = voice.lang
+    ..rate = rate;
+  synth.speak(utterance);
+  return true;
+}
+
+void stopSpeaking() => web.window.speechSynthesis.cancel();
+
+void onVoicesChanged(void Function() callback) {
+  web.window.speechSynthesis.addEventListener(
+    'voiceschanged',
+    ((web.Event _) => callback()).toJS,
+  );
+}

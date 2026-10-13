@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../arabic/diacritics.dart';
+import '../listen/listen_card.dart';
 import '../theme.dart';
 import 'samples.dart';
 
@@ -16,9 +17,12 @@ typedef CaptureSink = Future<void> Function(
 );
 
 class ReadingPage extends StatefulWidget {
-  const ReadingPage({super.key, this.onCapture});
+  const ReadingPage({super.key, this.onCapture, this.speaker});
 
   final CaptureSink? onCapture;
+
+  /// When set, the «استمع» card is shown above the samples.
+  final Speaker? speaker;
 
   @override
   State<ReadingPage> createState() => _ReadingPageState();
@@ -86,6 +90,10 @@ class _ReadingPageState extends State<ReadingPage> {
             child: Text(_captureStatus!),
           ),
         const SizedBox(height: 16),
+        if (widget.speaker != null) ...[
+          ListenCard(speaker: widget.speaker!),
+          const SizedBox(height: 16),
+        ],
         RepaintBoundary(
           key: _captureKey,
           child: ColoredBox(
@@ -156,7 +164,8 @@ class _ReadingPageState extends State<ReadingPage> {
       image.dispose();
       await widget.onCapture!(bytes!.buffer.asUint8List(), {
         'diacritics': _showDiacritics ? 'on' : 'off',
-        'scale': _scale.toString(),
+        // Fixed format: dart2js would print 1.0 as "1".
+        'scale': _scale.toStringAsFixed(1),
       });
       if (mounted) setState(() => _captureStatus = l10n.captureSent);
     } on Object catch (e) {

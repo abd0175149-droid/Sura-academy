@@ -16,9 +16,10 @@ final class Pages
 
     public const AUTO_WARM = 5;
 
-    public static function start(Request $request): string
+    public static function start(Request $request, bool $apk = false): string
     {
         $h = self::h(...);
+        $android = $apk ? "<h2>{$h('start.android')}</h2><p><a class=\"button\" href=\"/downloads/flutter-web-spike.apk\">{$h('start.apk')}</a></p><p class=\"muted\">{$h('start.apk_hint')}</p>" : '';
         $q = htmlspecialchars(self::carry($request), ENT_QUOTES);
         $links = '';
         foreach (['wasm/iso', 'wasm/plain', 'js/iso', 'js/plain', 'wasmx/iso'] as $variant) {
@@ -34,6 +35,7 @@ final class Pages
               <p class="muted">{$h('start.auto_hint', ['n' => $runs])}</p>
               <h2>{$h('start.variants')}</h2>
               <ul>{$links}</ul>
+              {$android}
             </main>
             HTML);
     }
