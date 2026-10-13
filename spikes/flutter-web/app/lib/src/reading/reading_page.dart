@@ -45,19 +45,23 @@ class _ReadingPageState extends State<ReadingPage> {
           runSpacing: 12,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Switch(
-                  key: const ValueKey('diacritics-switch'),
-                  value: _showDiacritics,
-                  onChanged: (v) => setState(() => _showDiacritics = v),
-                ),
-                const SizedBox(width: 8),
-                Text(l10n.showDiacritics),
-              ],
+            // One labelled switch for screen readers, not a switch plus a separate text.
+            MergeSemantics(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Switch(
+                    key: const ValueKey('diacritics-switch'),
+                    value: _showDiacritics,
+                    onChanged: (v) => setState(() => _showDiacritics = v),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(l10n.showDiacritics),
+                ],
+              ),
             ),
             Semantics(
+              container: true,
               label: l10n.textSize,
               child: SegmentedButton<double>(
                 segments: [

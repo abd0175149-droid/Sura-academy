@@ -47,8 +47,11 @@ final class PayApp
         $return = $this->returnUrl($request->q('return'));
         in_array($request->q('status'), ['paid', 'cancelled'], true) || throw new ApiError(422, 'validation_failed', ['field' => 'status']);
         $query = http_build_query(['status' => $request->q('status'), 'mode' => 'redirect', 'ref' => bin2hex(random_bytes(4))]);
+        // The result goes into the query, before any fragment (a `#…` would swallow it).
+        [$url, $fragment] = array_pad(explode('#', $return, 2), 2, null);
+        $location = $url.(str_contains($url, '?') ? '&' : '?').$query.($fragment !== null && $fragment !== '' ? '#'.$fragment : '');
 
-        return new Response(303, '', ['Location' => $return.(str_contains($return, '?') ? '&' : '?').$query, 'Cache-Control' => 'no-store']);
+        return new Response(303, '', ['Location' => $location, 'Cache-Control' => 'no-store']);
     }
 
     private function frame(Request $request, string $mode): Response

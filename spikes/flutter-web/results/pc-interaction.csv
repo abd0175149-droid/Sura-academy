@@ -1,0 +1,17 @@
+profile,variant,phase,wasm,threads,isolated,fcp,interactive,first_input,transfer_kb
+none,wasm/iso,cold,true,multi,true,102,470,694,2537
+none,wasm/iso,cold,true,multi,true,161,553,758,2537
+none,wasm/iso,warm,true,multi,true,29,403,554,0
+none,wasm/iso,warm,true,multi,true,92,394,578,0
+none,wasm/plain,cold,true,single,false,40,381,660,2537
+none,wasm/plain,cold,true,single,false,32,339,675,2537
+none,wasm/plain,warm,true,single,false,32,401,710,0
+none,wasm/plain,warm,true,single,false,32,346,626,0
+none,js/iso,cold,false,js,true,46,766,1305,2722
+none,js/iso,cold,false,js,true,46,765,1196,2722
+none,js/iso,warm,false,js,true,27,783,1249,0
+none,js/iso,warm,false,js,true,56,746,1326,0
+none,js/plain,cold,false,js,false,28,900,1361,2722
+none,js/plain,cold,false,js,false,32,772,1256,2722
+none,js/plain,warm,false,js,false,36,795,1246,0
+none,js/plain,warm,false,js,false,32,714,1236,0

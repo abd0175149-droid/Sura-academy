@@ -71,4 +71,22 @@ void main() {
     expect(after, greaterThan(before * 1.8));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('spike NFR-a11y diacritics switch is one labelled toggle', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await useTabletSize(tester);
+    await tester.pumpWidget(wrap(const ReadingPage()));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byKey(const ValueKey('diacritics-switch'))),
+      isSemantics(
+        label: 'إظهار التشكيل',
+        isToggled: true,
+        hasToggledState: true,
+      ),
+    );
+    semantics.dispose();
+  });
 }

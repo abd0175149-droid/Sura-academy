@@ -329,6 +329,8 @@ test('spike payment return only goes back to the app origin', function (): void 
     same(303, $r->status, 'redirect');
     $loc = (string) header_of($r, 'Location');
     check(str_starts_with($loc, $back.'&status=paid&mode=redirect&ref='), 'back to the app: '.$loc);
+    $hashed = pay('/pay/done?status=cancelled&mode=redirect&return='.rawurlencode($back.'#'));
+    check(str_starts_with((string) header_of($hashed, 'Location'), $back.'&status=cancelled&mode=redirect&ref='), 'status before the fragment: '.header_of($hashed, 'Location'));
     error(pay('/pay/done?status=paid&mode=redirect&return='.rawurlencode('https://evil.test/')), 400, 'bad_return_url');
     error(pay('/pay/done?status=paid&mode=redirect&return='.rawurlencode(APP_ORIGIN.'.evil.test/')), 400, 'bad_return_url');
     error(pay('/pay/done?status=stolen&mode=redirect&return='.rawurlencode($back)), 422, 'validation_failed');

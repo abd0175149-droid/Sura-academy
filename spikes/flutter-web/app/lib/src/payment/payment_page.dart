@@ -54,15 +54,13 @@ class _PaymentPageState extends State<PaymentPage> {
   void _report() =>
       browser.reportProbe('payment', {'status': _status, 'via': _via});
 
-  Uri get _appOrigin => Uri.base.replace(path: '', query: '', fragment: '');
-
   String _returnUrl() {
     final q = Map<String, String>.of(Uri.base.queryParameters)
       ..remove('status')
       ..remove('ref')
       ..remove('mode')
       ..['tab'] = 'payment';
-    return Uri.base.replace(queryParameters: q, fragment: '').toString();
+    return Uri.base.removeFragment().replace(queryParameters: q).toString();
   }
 
   String _payUrl(String path, String mode) => Uri.parse(_payOrigin)
@@ -70,7 +68,7 @@ class _PaymentPageState extends State<PaymentPage> {
         path: path,
         queryParameters: {
           'return': _returnUrl(),
-          'origin': _appOrigin.origin,
+          'origin': Uri.base.origin,
           'mode': mode,
         },
       )

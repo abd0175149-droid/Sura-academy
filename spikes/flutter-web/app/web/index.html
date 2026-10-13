@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<!-- No dir="rtl" here: Flutter positions its semantics DOM (screen readers) with absolute
+     elements that shift right under an RTL root (measured in WP-0.5). Flutter lays out RTL itself;
+     only the HTML splash below needs dir="rtl". -->
+<html lang="ar">
 <head>
   <!-- `flutter build` writes "/" here; the spike server rewrites it per variant (/v/<build>/<headers>/…). -->
   <base href="$FLUTTER_BASE_HREF">
@@ -21,7 +24,7 @@
 </head>
 <body>
   <!-- ADR-010 §5: a light Arabic HTML splash painted before any Flutter code arrives (D-22 LCP). -->
-  <div id="splash" role="status" aria-live="polite">
+  <div id="splash" dir="rtl" role="status" aria-live="polite">
     <svg class="splash-mark" viewBox="0 0 100 100" aria-hidden="true">
       <polygon points="50,4 61,28 88,22 78,47 96,64 70,70 66,96 50,80 34,96 30,70 4,64 22,47 12,22 39,28"></polygon>
       <circle cx="50" cy="52" r="15"></circle>

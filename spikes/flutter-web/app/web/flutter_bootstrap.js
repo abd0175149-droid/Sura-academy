@@ -77,6 +77,7 @@
     return 'ready';
   })().catch((e) => `failed: ${e}`);
 
+  spike.swReady = swReady;
   spike.next = async () => {
     const sw = await Promise.race([swReady, new Promise((r) => setTimeout(() => r('timeout'), 20000))]);
     const back = new URLSearchParams({ k: params.get('k') ?? '', d: params.get('d') ?? '', n: params.get('n') ?? '', sw });
