@@ -16,6 +16,9 @@ var="$here/token-server/var"
 name=sura-spike-minio
 volume=sura-spike-minio-data
 port=29100
+proxy_port=29102
+proxy=sura-spike-minio-proxy
+network=sura-spike
 bucket=spike-recordings
 image="cgr.dev/chainguard/minio@sha256:7df55d002b698e4494a131b848dd553361bbe58b7e19f62d9623c29af1ba9ccf"
 cloudflared="${CLOUDFLARED:-$HOME/tools/cloudflared}"
@@ -30,8 +33,9 @@ stop_tunnel() {
 
 if [[ "${1:-}" == "purge" ]]; then
   stop_tunnel
-  docker rm -f "$name" >/dev/null 2>&1 || true
+  docker rm -f "$proxy" "$name" >/dev/null 2>&1 || true
   docker volume rm "$volume" >/dev/null 2>&1 || true
+  docker network rm "$network" >/dev/null 2>&1 || true
   rm -f "$var/egress.json" "$var/minio-root.json"
   echo "purged $name, volume $volume and local egress credentials"
   exit 0
@@ -43,8 +47,9 @@ egress_user="spike-egress"
 egress_pass="$(openssl rand -hex 24)"
 
 stop_tunnel
-docker rm -f "$name" >/dev/null 2>&1 || true
-docker run -d --name "$name" -p "127.0.0.1:$port:9000" -v "$volume:/data" \
+docker rm -f "$proxy" "$name" >/dev/null 2>&1 || true
+docker network inspect "$network" >/dev/null 2>&1 || docker network create "$network" >/dev/null
+docker run -d --name "$name" --network "$network" -p "127.0.0.1:$port:9000" -v "$volume:/data" \
   -e MINIO_ROOT_USER="$root_user" -e MINIO_ROOT_PASSWORD="$root_pass" \
   "$image" server /data >/dev/null
 
@@ -63,7 +68,28 @@ mc admin policy create local egress-write /tmp/egress-write.json >/dev/null
 mc admin user add local "$egress_user" "$egress_pass" >/dev/null
 mc admin policy attach local egress-write --user "$egress_user" >/dev/null
 
-nohup "$cloudflared" tunnel --no-autoupdate --url "http://127.0.0.1:$port" >"$var/minio-tunnel.log" 2>&1 &
+# Cloudflare rewrites Accept-Encoding on the way in, but LiveKit's egress (AWS SDK for Go) signs it
+# as "identity", so MinIO answers SignatureDoesNotMatch (measured 2026-10-13). A tiny nginx in front
+# of MinIO puts the signed value back; everything else passes through unchanged.
+docker run -d --name "$proxy" --network "$network" -p "127.0.0.1:$proxy_port:8080" nginx:1.27-alpine \
+  sh -c 'cat > /etc/nginx/conf.d/default.conf <<CONF
+server {
+  listen 8080;
+  client_max_body_size 0;
+  proxy_request_buffering off;
+  proxy_buffering off;
+  location / {
+    proxy_pass http://sura-spike-minio:9000;
+    proxy_http_version 1.1;
+    proxy_set_header Host \$http_host;
+    proxy_set_header Accept-Encoding identity;
+    proxy_set_header Connection "";
+  }
+}
+CONF
+exec nginx -g "daemon off;"' >/dev/null
+
+nohup "$cloudflared" tunnel --no-autoupdate --url "http://127.0.0.1:$proxy_port" >"$var/minio-tunnel.log" 2>&1 &
 echo $! >"$var/minio-tunnel.pid"
 url=""
 for _ in $(seq 1 60); do

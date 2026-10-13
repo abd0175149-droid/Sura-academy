@@ -70,6 +70,20 @@ final class LiveKitAdmin
         return (string) ($out['egressId'] ?? $out['egress_id'] ?? '');
     }
 
+    /** Recent recordings of the room with LiveKit's status and error text (why a recording failed). */
+    public function recordings(string $room): array
+    {
+        $items = $this->call('Egress', 'ListEgress', ['room_name' => $room], $room)['items'] ?? [];
+
+        return array_map(static fn (array $e): array => [
+            'egress_id' => $e['egressId'] ?? $e['egress_id'] ?? null,
+            'status' => $e['status'] ?? null,
+            'error' => $e['error'] ?? null,
+            'started_at' => $e['startedAt'] ?? $e['started_at'] ?? null,
+            'files' => array_map(static fn (array $f): array => array_intersect_key($f, array_flip(['filename', 'location', 'size', 'duration'])), $e['fileResults'] ?? $e['file_results'] ?? []),
+        ], $items);
+    }
+
     public function stopRecording(string $room, string $egressId): void
     {
         $this->call('Egress', 'StopEgress', ['egress_id' => $egressId], $room);

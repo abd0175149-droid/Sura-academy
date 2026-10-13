@@ -28,9 +28,15 @@ final class ZoomWebhook
     {
         $ts = $request->header('x-zm-request-timestamp');
         $expected = 'v0='.hash_hmac('sha256', "v0:{$ts}:{$request->body}", $config->zoomWebhookSecret);
-        if ($config->zoomWebhookSecret === '' || ! ctype_digit($ts) || abs($now - (int) $ts) > self::MAX_AGE
-            || ! hash_equals($expected, $request->header('x-zm-signature'))) {
-            throw new ApiError(401, 'unauthorized');
+        $reason = match (true) {
+            $config->zoomWebhookSecret === '' => 'no webhook secret configured',
+            ! ctype_digit($ts) => 'missing x-zm-request-timestamp',
+            abs($now - (int) $ts) > self::MAX_AGE => 'timestamp outside 5 minutes',
+            ! hash_equals($expected, $request->header('x-zm-signature')) => 'signature mismatch',
+            default => null,
+        };
+        if ($reason !== null) {
+            throw new ApiError(401, 'unauthorized', ['reason' => $reason]);
         }
 
         $event = $request->json();

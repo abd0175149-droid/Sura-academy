@@ -54,6 +54,7 @@ final class LiveKitWebhook
             'egress' => $egress === [] ? null : [
                 'id' => $egress['egressId'] ?? null,
                 'status' => $egress['status'] ?? null,
+                'error' => $egress['error'] ?? null,
                 'files' => array_map(static fn (array $f): array => array_intersect_key($f, array_flip(['filename', 'location', 'size', 'duration'])), $egress['fileResults'] ?? []),
             ],
         ], static fn (mixed $v): bool => $v !== null);

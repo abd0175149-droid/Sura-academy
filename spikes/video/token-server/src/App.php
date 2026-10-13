@@ -44,6 +44,11 @@ final class App
                 },
             };
         } catch (ApiError $e) {
+            if (str_starts_with($request->path, '/webhooks/')) {
+                // Rejected provider notifications are otherwise invisible; log the reason only.
+                error_log("[{$requestId}] {$request->path} {$e->status} {$e->errorCode} ".json_encode($e->details));
+            }
+
             return self::error($e, $requestId);
         } catch (Throwable $e) {
             error_log("[{$requestId}] ".get_class($e).': '.$e->getMessage());
@@ -55,6 +60,7 @@ final class App
     private function stored(array $event): Response
     {
         $this->events->append($event + ['received_at' => ($this->clock)()]);
+        error_log("[webhook] {$event['provider']} {$event['event']} accepted");
 
         return Response::json(200, ['ok' => true]);
     }
@@ -63,7 +69,13 @@ final class App
     {
         [$event, $validation] = ZoomWebhook::receive($request, $this->config, ($this->clock)());
 
-        return $validation !== null ? Response::json(200, $validation) : $this->stored($event);
+        if ($validation !== null) {
+            error_log('[webhook] zoom endpoint.url_validation answered');
+
+            return Response::json(200, $validation);
+        }
+
+        return $this->stored($event);
     }
 
     /** GET /events: the normalized log plus minutes per identity for each room seen. */
@@ -121,6 +133,7 @@ final class App
                 })()
                 : throw new ApiError(422, 'validation_failed', ['fields' => ['identity']]),
             'record/start' => Response::json(200, ['egress_id' => $liveKit->startRecording($room)]),
+            'record/status' => Response::json(200, ['recordings' => $liveKit->recordings($room)]),
             'record/stop' => (static function () use ($liveKit, $room, $body): Response {
                 $liveKit->stopRecording($room, (string) ($body['egress_id'] ?? ''));
 
