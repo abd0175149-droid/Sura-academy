@@ -76,6 +76,14 @@ Future<TrialResult> measureJoin({
       connectedMs: connectedMs,
       error: 'no remote video in ${videoTimeout.inSeconds}s',
     );
+  } on SpikeApiException catch (e) {
+    // The server's own Arabic message (e.g. «المعلمة أغلقت الغرفة.» for a locked room).
+    return TrialResult(
+      index: index,
+      tokenMs: tokenMs,
+      connectedMs: connectedMs,
+      error: e.messageAr.isEmpty ? e.toString() : e.messageAr,
+    );
   } on Object catch (e) {
     return TrialResult(
       index: index,
