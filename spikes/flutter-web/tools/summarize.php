@@ -82,7 +82,8 @@ foreach ($metrics as $m) {
         $hidden[] = $m['device'].' '.$m['variant'].' '.$m['phase'].' ('.trim($browser).')';
         continue;
     }
-    $key = implode(' | ', [$m['device'], $m['network'], $m['variant'], $m['phase']]);
+    $variant = $m['variant'].(($m['semantics'] ?? true) === false ? ' sem-off' : '');
+    $key = implode(' | ', [$m['device'], $m['network'], $variant, $m['phase']]);
     $groups[$key]['splash'][] = $marks['lcp'] ?? $marks['fcp'] ?? null;
     $groups[$key]['interactive'][] = $marks['interactive'] ?? null;
     $groups[$key]['transfer'][] = $m['transfer_kb'] ?? null;

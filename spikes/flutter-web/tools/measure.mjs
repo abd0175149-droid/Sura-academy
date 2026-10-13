@@ -32,6 +32,8 @@ const { values } = parseArgs({
     base: { type: 'string', default: 'http://127.0.0.1:27200' },
     checks: { type: 'boolean', default: false },
     video: { type: 'string', default: 'local' },
+    // Extra query for every load, e.g. `sem=0` (semantics tree off) to price ADR-010 §4.
+    query: { type: 'string', default: '' },
   },
 });
 
@@ -48,7 +50,7 @@ const LAUNCH = {
 };
 
 const run = () => `r-${randomBytes(8).toString('hex')}`;
-const url = (variant, runId, extra) => `${base}/v/${variant}/${runId ? `${runId}/` : ''}?${new URLSearchParams({ k: key, d: 'headless-chrome', ...extra })}`;
+const url = (variant, runId, extra) => `${base}/v/${variant}/${runId ? `${runId}/` : ''}?${new URLSearchParams({ k: key, d: 'headless-chrome', ...Object.fromEntries(new URLSearchParams(values.query)), ...extra })}`;
 
 async function throttle(page, profile) {
   const cdp = await page.context().newCDPSession(page);
@@ -63,6 +65,8 @@ async function load(page, target, timeoutMs) {
   await page.goto(target, { waitUntil: 'commit', timeout: timeoutMs });
   await page.waitForFunction(() => window.suraProbe?.startup, null, { timeout: timeoutMs, polling: 50 });
   const startup = JSON.parse(await page.evaluate(() => window.suraProbe.startup));
+  // Without the semantics tree there is nothing to find by role: no tap timing then.
+  if (new URLSearchParams(values.query).get('sem') === '0') return { startup, firstInput: '', wallMs: Date.now() - t0 };
   // A tap can land before Flutter attached its handlers under heavy CPU throttling: retry it.
   const field = page.getByRole('textbox', { name: 'اسم تجريبي' });
   const deadline = Date.now() + timeoutMs;
@@ -76,7 +80,7 @@ async function load(page, target, timeoutMs) {
 }
 
 async function loads() {
-  const out = join(spike, 'results/pc-interaction.csv');
+  const out = join(spike, values.query ? `results/pc-interaction-${values.query.replace(/[^a-z0-9]+/gi, '-')}.csv` : 'results/pc-interaction.csv');
   if (!existsSync(out)) writeFileSync(out, 'profile,variant,phase,wasm,threads,isolated,fcp,interactive,first_input,transfer_kb,status\n');
   const browser = await chromium.launch(LAUNCH);
   const runs = Number(values.runs);
