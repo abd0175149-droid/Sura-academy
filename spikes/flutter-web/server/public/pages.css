@@ -1,0 +1,14 @@
+:root { color-scheme: light dark; --bg: #f4f7f7; --fg: #16323a; --muted: #4b6870; --accent: #0e5d6b; --on-accent: #ffffff; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0e1a1d; --fg: #e2eef0; --muted: #a5c0c6; --accent: #6cc3d1; --on-accent: #0e1a1d; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.7 system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
+main { max-width: 40rem; margin-inline: auto; padding-inline: 16px; padding-block: 24px; }
+h1 { font-size: 1.6rem; margin-block: 0 12px; }
+h2 { font-size: 1.2rem; margin-block: 24px 8px; }
+a { color: var(--accent); }
+.button, button { display: inline-block; font: inherit; padding: 10px 20px; border-radius: 10px; border: 2px solid var(--accent); background: transparent; color: var(--accent); text-decoration: none; cursor: pointer; min-height: 44px; }
+.button { background: var(--accent); color: var(--on-accent); }
+.muted { color: var(--muted); font-size: .95rem; }
+.amount { font-size: 1.4rem; font-weight: 600; }
+.ltr { direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .85em; color: var(--muted); }
+ul { padding-inline-start: 1.2rem; }
+li { margin-block: 6px; }

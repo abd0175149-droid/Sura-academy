@@ -1,0 +1,44 @@
+name: flutter_web_spike
+description: "WP-0.5 Flutter web spike (ADR-010, D-22). Not product code; never imported by apps/ or packages/."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.6.0
+  intl: ^0.20.3
+  livekit_client: ^2.13.1
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+  # Bundled (OFL, assets/fonts/OFL-*.txt). Sources and SHA-256 in specs/WP-0.5/notes.md.
+  # Noto Naskh Arabic: unhinted build (no Latin letters), so Latin falls back to IBM Plex Sans Arabic
+  # through `fontFamilyFallback` instead of Flutter's network font fallback (ADR-010, PRV-10).
+  fonts:
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSansArabic-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
+          weight: 700
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
+        - asset: assets/fonts/NotoNaskhArabic-SemiBold.ttf
+          weight: 600

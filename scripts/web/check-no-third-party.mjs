@@ -4,8 +4,14 @@
 //
 // Usage: node scripts/web/check-no-third-party.mjs <path/to/build/web>
 //
-// Runs twice: the WebAssembly build (Chromium default) and the JavaScript fallback
-// (what Safari/Firefox get), forced by hiding WasmGC support from Flutter's loader.
+// First a static check of the built flutter_bootstrap.js: engine files must be local
+// (`--no-web-resources-cdn`) and `fontFallbackBaseUrl` must point at our own origin. Flutter's
+// default is https://fonts.gstatic.com/s/, which a page only reveals when it shows a glyph no
+// bundled font has (emoji, rare symbols) — too late for a runtime check to catch (WP-0.4 privacy
+// review, WP-0.5).
+//
+// Then the runtime check, twice: the WebAssembly build (Chromium default) and the JavaScript
+// fallback (what Safari/Firefox get), forced by hiding WasmGC support from Flutter's loader.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
@@ -15,6 +21,32 @@ const root = resolve(process.argv[2] ?? '');
 if (!process.argv[2] || !(await stat(root).catch(() => null))?.isDirectory()) {
   console.error('usage: check-no-third-party.mjs <build/web directory>');
   process.exit(2);
+}
+
+/** Problems in the built bootstrap script that would send requests to a third party. */
+async function bootstrapProblems(dir) {
+  const source = await readFile(join(dir, 'flutter_bootstrap.js'), 'utf8').catch(() => null);
+  if (source === null) return ['flutter_bootstrap.js not found in the build'];
+  const problems = [];
+  if (!/"useLocalCanvasKit"\s*:\s*true/.test(source)) {
+    problems.push('engine files come from a CDN: build with --no-web-resources-cdn (ADR-010)');
+  }
+  const fallback = source.match(/fontFallbackBaseUrl\s*:\s*(['"`])(.*?)\1/);
+  const computed = /fontFallbackBaseUrl\s*:\s*new URL\(\s*(['"`])[^'"`:]*\1\s*,\s*document\.baseURI\s*\)/.test(source);
+  if (!fallback && !computed) {
+    problems.push("fontFallbackBaseUrl is not set: Flutter falls back to https://fonts.gstatic.com/s/ for missing glyphs (set it to our origin, e.g. '/fonts/')");
+  } else if (fallback && /^[a-z][a-z0-9+.-]*:|^\/\//i.test(fallback[2])) {
+    problems.push(`fontFallbackBaseUrl points to another origin: ${fallback[2]}`);
+  }
+  return problems;
+}
+
+const staticProblems = await bootstrapProblems(root);
+if (staticProblems.length > 0) {
+  console.error(`✗ bootstrap: ${staticProblems.length} problem(s)`);
+  for (const p of staticProblems) console.error(`  - ${p}`);
+} else {
+  console.log('✓ bootstrap: local engine files, font fallback on our origin');
 }
 
 const MIME = {
@@ -67,7 +99,7 @@ const modes = [
 ];
 
 const browser = await chromium.launch();
-let failed = false;
+let failed = staticProblems.length > 0;
 
 for (const mode of modes) {
   const context = await browser.newContext({ serviceWorkers: 'block' });

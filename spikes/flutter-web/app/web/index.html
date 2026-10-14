@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- No dir="rtl" here: Flutter positions its semantics DOM (screen readers) with absolute
+     elements that shift right under an RTL root (measured in WP-0.5). Flutter lays out RTL itself;
+     only the HTML splash below needs dir="rtl". -->
+<html lang="ar">
+<head>
+  <!-- `flutter build` writes "/" here; the spike server rewrites it per variant (/v/<build>/<headers>/…). -->
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="تجربة تقنية لأكاديمية سُرى: Flutter على الويب (WP-0.5).">
+  <!--sura-meta-->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="تجربة سُرى">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>تجربة Flutter على الويب</title>
+  <!-- External stylesheet, not inline: the spike's CSP has no 'unsafe-inline' (ADR-010 §7). -->
+  <link rel="stylesheet" href="splash.css">
+  <script src="flutter_bootstrap.js" async></script>
+</head>
+<body>
+  <!-- ADR-010 §5: a light Arabic HTML splash painted before any Flutter code arrives (D-22 LCP). -->
+  <div id="splash" dir="rtl" role="status" aria-live="polite">
+    <svg class="splash-mark" viewBox="0 0 100 100" aria-hidden="true">
+      <polygon points="50,4 61,28 88,22 78,47 96,64 70,70 66,96 50,80 34,96 30,70 4,64 22,47 12,22 39,28"></polygon>
+      <circle cx="50" cy="52" r="15"></circle>
+    </svg>
+    <p class="splash-name">أكاديمية سُرى</p>
+    <p class="splash-state">جارٍ تحميل التطبيق…</p>
+  </div>
+</body>
+</html>
