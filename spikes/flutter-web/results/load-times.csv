@@ -378,3 +378,8 @@ headless-chrome,throttled-fast-4g,js/plain,warm,false,js,false,controlled,false,
 headless-chrome,throttled-fast-4g,js/plain,warm,false,js,false,controlled,false,128,128,459,837,1805,1919,0,"chrome 156"
 headless-chrome,throttled-fast-4g,js/plain,warm,false,js,false,controlled,false,156,156,377,766,1775,1872,0,"chrome 156"
 headless-chrome,throttled-fast-4g,js/plain,warm,false,js,false,controlled,false,120,120,327,722,1847,1955,0,"chrome 156"
+ipad-safari,wifi,js/plain,manual,false,js,false,controlled,true,,,1279,1648,3439,887295,5,chrome-ios
+headless-chrome,unthrottled,wasm/plain,manual,true,single,false,none,true,232,232,423,483,742,765,2550,"chrome 156"
+headless-chrome,unthrottled,js/plain,manual,false,js,false,none,true,24,24,186,424,682,748,2732,"chrome 156"
+headless-chrome,unthrottled,js/plain,manual,false,js,false,none,true,36,36,183,429,732,805,2732,"chrome 156"
+headless-chrome,unthrottled,js/plain,manual,false,js,false,none,true,88,88,189,443,695,768,2732,"chrome 156"

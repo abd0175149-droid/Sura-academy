@@ -1,3 +1,5 @@
+import '../platform/browser.dart' as browser;
+
 /// Test content for the reading screen (content fixtures, not UI strings; in the product such
 /// text comes from the curriculum, never from ARB files).
 abstract final class ReadingSamples {
@@ -23,4 +25,10 @@ abstract final class ReadingSamples {
   static const fallback = 'أَحْسَنْتَ 🌟 نَجْمَةٌ وَهِلَالٌ ☪';
 
   static const all = [story, stress, quranic, mixed, fallback];
+
+  /// `?fallback=0` drops the emoji sample, to see whether the bidi isolates alone make Flutter
+  /// fetch a fallback font (RTL review, WP-0.5).
+  static List<String> get shown => browser.queryParam('fallback') == '0'
+      ? const [story, stress, quranic, mixed]
+      : all;
 }

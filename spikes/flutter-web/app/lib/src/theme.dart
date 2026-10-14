@@ -13,6 +13,10 @@ abstract final class SpikeFonts {
 ThemeData spikeTheme() => ThemeData(
   colorSchemeSeed: const Color(0xFF0E5D6B),
   fontFamily: SpikeFonts.ui,
+  // Flutter gives desktop platforms (a Chromebook reports linux) compact density and
+  // shrink-wrapped tap targets; touch screens need ≥ 44 px everywhere (RTL review, WP-0.5).
+  visualDensity: VisualDensity.standard,
+  materialTapTargetSize: MaterialTapTargetSize.padded,
   // Arabic UI line height ≥ 1.6 (arabic-typography skill); no letter spacing on Arabic.
   textTheme: const TextTheme(
     bodyLarge: TextStyle(height: 1.6),

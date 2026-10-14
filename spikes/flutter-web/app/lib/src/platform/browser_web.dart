@@ -182,3 +182,7 @@ void onVoicesChanged(void Function() callback) {
     ((web.Event _) => callback()).toJS,
   );
 }
+
+void setDocumentLang(String languageCode) {
+  web.document.documentElement?.setAttribute('lang', languageCode);
+}

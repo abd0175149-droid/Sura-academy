@@ -140,13 +140,27 @@ class _ReadingPageState extends State<ReadingPage> {
                   ?.copyWith(color: Theme.of(context).colorScheme.primary),
             ),
           ),
-          for (final (i, sample) in ReadingSamples.all.indexed)
-            Text(
-              _showDiacritics ? sample : hideDiacritics(sample),
-              key: ValueKey('sample:$family:$size:$i'),
-              style: style,
-              textAlign: TextAlign.start,
+          // Arabic content keeps its own direction and language whatever the UI locale is
+          // (RTL review: under `?lang=en` the ornate brackets and full stop moved).
+          Directionality(
+            textDirection: TextDirection.rtl,
+            child: Semantics(
+              localeForSubtree: const Locale('ar'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final (i, sample) in ReadingSamples.shown.indexed)
+                    Text(
+                      _showDiacritics ? sample : hideDiacritics(sample),
+                      key: ValueKey('sample:$family:$size:$i'),
+                      style: style,
+                      locale: const Locale('ar'),
+                      textAlign: TextAlign.start,
+                    ),
+                ],
+              ),
             ),
+          ),
         ],
       ),
     );

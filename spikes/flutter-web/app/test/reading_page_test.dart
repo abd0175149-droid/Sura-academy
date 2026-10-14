@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_web_spike/src/arabic/diacritics.dart';
@@ -89,4 +90,46 @@ void main() {
     );
     semantics.dispose();
   });
+
+  testWidgets(
+    'spike CNT-08 Arabic samples stay right-to-left under the English UI',
+    (tester) async {
+      await useTabletSize(tester);
+      await tester.pumpWidget(
+        wrap(const ReadingPage(), locale: const Locale('en')),
+      );
+      await tester.pumpAndSettle();
+      final sample = _sampleFinder.first;
+      expect(Directionality.of(tester.element(sample)), TextDirection.rtl);
+      expect(tester.widget<Text>(sample).locale, const Locale('ar'));
+    },
+  );
+
+  testWidgets(
+    'spike NFR-a11y touch targets stay at least 44 px on desktop platforms',
+    (tester) async {
+      // A Chromebook reports linux: Flutter would otherwise use compact density there.
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      await useTabletSize(tester);
+      await tester.pumpWidget(wrap(ReadingPage(onCapture: (_, _) async {})));
+      await tester.pumpAndSettle();
+      for (final label in ['التقاط صورة', 'عادي', 'الأكبر']) {
+        final button = find
+            .ancestor(
+              of: find.text(label),
+              matching: find.byWidgetPredicate(
+                (w) => w is ButtonStyleButton || w is SegmentedButton<double>,
+              ),
+            )
+            .first;
+        expect(
+          tester.getSize(button).height,
+          greaterThanOrEqualTo(44),
+          reason: label,
+        );
+      }
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
 }

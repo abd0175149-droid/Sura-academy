@@ -28,6 +28,8 @@ class SpikeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Arabic first; `?lang=en` checks the mirrored layout.
     final locale = Locale(browser.queryParam('lang') == 'en' ? 'en' : 'ar');
+    // No `dir` on <html> (ADR-010 §4), but `lang` must follow the locale.
+    browser.setDocumentLang(locale.languageCode);
     return MaterialApp(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       debugShowCheckedModeBanner: false,

@@ -50,3 +50,6 @@ void stopSpeaking() {}
 
 /// Called once when the browser's voice list arrives (it loads asynchronously in Chrome).
 void onVoicesChanged(void Function() callback) {}
+
+/// Keeps `<html lang>` in step with the UI locale (screen readers pick the voice from it).
+void setDocumentLang(String languageCode) {}
