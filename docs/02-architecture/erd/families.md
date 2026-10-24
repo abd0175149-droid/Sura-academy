@@ -164,9 +164,9 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | family_id | uuid | no | families.id | |
 | first_name | string | no | | PII |
-| first_name_normalized | string | no | | PII; Arabic/Latin normalized for duplicate-trial detection (D-09) |
-| birth_month | smallint | no | | PII; 1–12 (PRV-04: month and year only) |
-| birth_year | smallint | no | | PII |
+| first_name_normalized | string | yes | | PII; Arabic/Latin normalized for duplicate-trial detection (D-09); null after erasure |
+| birth_month | smallint | yes | | PII; 1–12 (PRV-04: month and year only); required at creation (ONB-03), null after erasure |
+| birth_year | smallint | yes | | PII; required at creation, null after erasure |
 | suspended_at | timestamptz | yes | | ADM-03 «الإيقاف دون حذف» |
 | departed_at | timestamptz | yes | | starts the "after the student leaves" retention clocks (F17:45-46); when it is set is WP-5.2's |
 | pseudonymized_at | timestamptz | yes | | erasure done (D-14); ledger and invoices keep the id |
