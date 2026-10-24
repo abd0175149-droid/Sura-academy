@@ -3,7 +3,8 @@
 ## Decisions applied
 - D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-14, D-26, D-28, D-30 (Default): applied as in design.md §1.
 - Also consulted (Default): D-15, D-16, D-18, D-24, D-27, D-29. D-13 (Open) only needs a nullable `consents.verification_method`, as D-13 itself prescribes.
-- D-37 (Open, added 2026-10-24): student availability storage. Waiting for the owner.
+- D-37 (Approved 2026-10-24, option a): `student_availability` stores weekday + local time + family IANA zone.
+- Design and tasks approved by the owner on 2026-10-24 («اوافق على المقترحات», approval page https://claude.ai/artifact/9NpNhMNxBqzodnAg14jF3z).
 
 ## Deviations / surprises
 - Reads beyond "اقرأ فقط": `architecture.md` §3 (module → table ownership, referenced by ADR-001) and constitution Art. 5 §2 (exact ledger unique-key wording). Needed to define "per module" and the ledger index.

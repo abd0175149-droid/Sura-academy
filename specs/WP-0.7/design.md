@@ -160,7 +160,7 @@ None in the product. The owner reviews the diagrams on an Arabic artifact page (
 - Encrypted columns are marked (`teacher_bank_accounts.*`, `mfa_factors.secret`); hashed: `student_pins.pin_hash`, `student_login_codes.code_hash`.
 
 ## 8. Risks & open questions
-- **D-37 (Open, owner):** ONB-13 says student availability is "stored in UTC"; a weekly window stored in UTC moves by an hour for the family at every DST change (constitution Art. 6). Recommended: store weekday + local time + the family's IANA zone, like class patterns. Blocks only the `student_availability` columns; the rest can proceed.
+- **D-37 (Approved 2026-10-24, option a):** ONB-13 says student availability is "stored in UTC"; a weekly window stored in UTC moves by an hour for the family at every DST change (constitution Art. 6). Recommended: store weekday + local time + the family's IANA zone, like class patterns. Blocks only the `student_availability` columns; the rest can proceed.
 - Owner approval of the diagrams at the end (acceptance criterion 1) is recorded in `status.md` «اعتمادات صاحب المشروع».
 - Spec ambiguities that do not change columns (dunning day origin, 14 vs 21 DST notice days, PAY-04 amount, report sampling vs states, settings keys missing for stated numbers) are listed in notes.md with the WP that must resolve them; they are not decided here.
 - Size: ≈ 110 tables in 11 files. Mitigation: generated diagrams and the checker; one module per task.
