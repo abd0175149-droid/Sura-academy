@@ -52,7 +52,7 @@ Checker after the last fix: `erd: tables 130 (modules 11) · spec/14 mapped 110/
 Owner review page (Arabic, module by module, generated from the ERD files): https://claude.ai/artifact/DFNmcdpv5kA2ih3nDnE59c
 | Acceptance criterion | Evidence |
 | --- | --- |
-| Owner approves the diagrams (recorded in status.md) | pending: review page published 2026-10-24 |
+| Owner approves the diagrams (recorded in status.md) | approved 2026-10-24: «أعتمد نموذج البيانات», recorded in `status.md` «اعتمادات صاحب المشروع» |
 | No spec/14 table without a mapping; no R1 data requirement without columns | `php scripts/check-erd.php`: spec/14 mapped 110/110 (E1), R1 covered 210/210 with every cited `table.column` existing (E5) |
 
 ## Review findings
@@ -123,4 +123,7 @@ Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER
 - **WP-0.8 (legal pack):** D-38, D-39, D-40 and the retention periods marked «مقترح» or «غير منصوص» in `erd/pii-registry.md`.
 
 ## خطوات العرض اليدوي
-1. …
+1. افتح صفحة المراجعة https://claude.ai/artifact/DFNmcdpv5kA2ih3nDnE59c. المتوقع: الأرقام الأربعة (130 جدولاً، 110 / 110، 210 / 210، 82 حقلاً شخصياً) والقرارات المسجلة D-38 أ وD-40 ب.
+2. افتح وحدة «الحضور ودفتر الرصيد» ثم «عرض المخطط». المتوقع: جدول عربي بالجداول الستة وعلامة «لا يُعدَّل» على الدفتر وتمديدات الدفعات، ومخطط مرسوم.
+3. اختياري، من طرفية WSL: `cd ~/sura-academy && php scripts/check-erd.php`. المتوقع: `erd: tables 130 (modules 11) · spec/14 mapped 110/110 · migration order 130 · R1 covered 210/210 · pii columns 82` ثم `✔ erd OK`.
+4. اختياري: `php scripts/test-erd.php`. المتوقع: `erd tests: 58/58 as expected`.
