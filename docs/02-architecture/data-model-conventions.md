@@ -41,7 +41,9 @@
 
 ## جداول الإضافة فقط
 
-`credit_ledger_entries`، `audit_logs`، `wallet_entries`، `subscription_events`، `enrollment_history`، `consents`، `setting_versions`، `rule_versions`، `participant_events`، `delivery_logs`.
+`credit_ledger_entries`، `audit_logs`، `wallet_entries`، `subscription_events`، `enrollment_history`، `consents`، `setting_versions`، `rule_versions`، `participant_events`، `delivery_logs`، `join_token_log`، `recording_access_log`، `safeguarding_incident_actions`.
+
+أُضيفت الثلاثة الأخيرة في WP-0.7، وكلها سجلات وصول أو خطوات (SEC-10، SAFE-02).
 
 لكل منها:
 1. بلا `updated_at`.
@@ -89,4 +91,20 @@ CREATE TRIGGER credit_ledger_entries_append_only
 | `setting_versions` | Platform | تاريخ قيم الإعدادات (ADM-12) |
 | `seat_holds` | Scheduling | D-30: حجز المقعد أثناء الدفع |
 | `notification_preferences` | Messaging | PAR-12 |
-| `learning_outcomes`, `outcome_alignments` | Curriculum | CR-002 / D-26 (إن اعتُمد) |
+| `learning_outcomes`, `outcome_alignments` | Curriculum | CR-002 / D-26؛ `level_outcomes` في spec/14 دُمج في `learning_outcomes` (WP-0.7) |
+| `audit_log_personal_data` | Platform | D-14 + SEC-11: الجزء الشخصي من سجل التدقيق قابل للمحو (WP-0.7) |
+| `tags`, `taggables` | Platform | ADM-02، CNT-07: الوسوم (WP-0.7) |
+| `student_login_codes` | Identity | STU-01: رمز لمرة واحدة أو QR (WP-0.7) |
+| `family_invitations` | Families | ONB-12: دعوة العمليات (WP-0.7) |
+| `cookie_consents` | Families | PUB-10: الزائر بلا حساب (WP-0.7) |
+| `safeguarding_incident_actions` | Families | SAFE-02: كل خطوة في البلاغ (WP-0.7) |
+| `placement_quiz_items` | Curriculum | ASM-01: أسئلة اختبار المستوى؛ `questions` في spec/14 لبنك R2 (WP-0.7) |
+| `session_chat_messages` | Live | CLS-07: دردشة الحصة المحفوظة (WP-0.7) |
+| `message_template_versions` | Messaging | NOT-07: إصدارات القوالب (WP-0.7) |
+| `suppressed_recipients` | Messaging | NOT-09: العناوين المرتدة (WP-0.7) |
+| `teacher_levels` | Teachers | TOP-02، SCH-11: المستويات المؤهلة لها المعلمة (WP-0.7) |
+| `teacher_bank_accounts` | Teachers | TOP-02، SEC-08: البيانات البنكية مشفرة ومنفصلة (WP-0.7) |
+| `teacher_interviews` | Teachers | TOP-01: نموذج تقييم المقابلة (WP-0.7) |
+| `job_batches`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `model_has_permissions` | Platform، Identity | جداول Laravel والحزم (WP-0.7) |
+
+المخطط الكامل لكل جدول في `docs/02-architecture/erd/` (WP-0.7)، و`php scripts/check-erd.php` يفحص اتساقه مع هذا الملف.

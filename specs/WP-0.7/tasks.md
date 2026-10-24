@@ -12,11 +12,11 @@ No contract, no production code: order is tooling (tests first) → module docs 
 - [x] T7 `curriculum.md` (hierarchy, content, outcomes per D-26, placement, assessments, trials) — verify: same
 - [x] T8 `teachers.md` core + compensation (D-02, D-03, D-04) — verify: same
 - [x] T9 `scheduling.md` (time model per ADR-008, D-08, D-12, D-24, D-30; `student_availability` per D-37 answer) — verify: same
-- [ ] T10 `live.md` (rooms, tokens, participant events, recordings per D-11/D-16, chat) — verify: same
-- [ ] T11 `ledger.md` (ADR-007, D-05, D-06, D-28; unique key per design §3.3) — verify: same
-- [ ] T12 `billing.md` (D-01, D-07, D-28, D-30; payment gateway fields behind ADR-006/D-36) — verify: same
-- [ ] T13 `learning.md` + `messaging.md` (D-10) — verify: same
-- [ ] T14 Migration order section in README (all tables, FK-safe) — verify: `php scripts/check-erd.php` (E2 green)
+- [x] T10 `live.md` (rooms, tokens, participant events, recordings per D-11/D-16, chat) — verify: same
+- [x] T11 `ledger.md` (ADR-007, D-05, D-06, D-28; unique key per design §3.3) — verify: same
+- [x] T12 `billing.md` (D-01, D-07, D-28, D-30; payment gateway fields behind ADR-006/D-36) — verify: same
+- [x] T13 `learning.md` + `messaging.md` (D-10) — verify: same
+- [x] T14 Migration order section in README (all tables, FK-safe) — verify: `php scripts/check-erd.php` (E2 green)
 - [ ] T15 `pii-registry.md` + `config/privacy.php` shape (D-14, D-15, F17 retention table) — verify: `php scripts/check-erd.php` (E6 green)
 - [ ] T16 `r1-coverage.md`: 210 R1 IDs + OUT-01/02, built from `specs/WP-0.7/inventory/` — verify: `php scripts/check-erd.php` (E5 green, `R1 covered: 210`)
 - [ ] T17 Sync docs: `data-model-conventions.md` (added tables, append-only list + `join_token_log`, `recording_access_log`), `glossary.md` (new models) — verify: `php scripts/check-erd.php`; `bash scripts/verify.sh --changed`
