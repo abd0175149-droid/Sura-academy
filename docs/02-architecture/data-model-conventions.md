@@ -16,6 +16,9 @@
 | `feature_flags` | `features` | جدول Laravel Pennant |
 | `webhook_events` | `webhook_calls` | حزمة spatie/laravel-webhook-client |
 | `notifications` | `notifications` (جدول Laravel القياسي للإشعارات داخل التطبيق) + `delivery_logs` لكل قناة | توافق مع قناة قاعدة البيانات في Laravel |
+| `messages` | `support_messages` | رسائل تذاكر الدعم؛ يفصلها عن دردشة الحصة `session_chat_messages` (WP-0.7) |
+| `mfa_factors` | أعمدة TOTP في `users` | Fortify يحفظ السر ورموز الاسترداد في `users`؛ R1 يحتاج TOTP فقط (WP-0.7) |
+| `level_outcomes` | `learning_outcomes` | عبارات «يستطيع أن» لكل مستوى صفوف في كتالوج النتاجات (D-26، WP-0.7) |
 
 - جلسات الويب في Redis (`SESSION_DRIVER=redis`). تُحذف هجرة جدول `sessions` الافتراضية في Laravel.
 

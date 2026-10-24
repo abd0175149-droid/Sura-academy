@@ -195,6 +195,10 @@ function diagram(array $tables, array $names): string
     foreach ($names as $t) {
         $entities .= "  {$t} {\n";
         foreach ($tables[$t]['cols'] as $name => $col) {
+            // Every human-edited table points created_by/updated_by at users; drawing them hides the real relations.
+            if (in_array($name, ['created_by', 'updated_by'], true)) {
+                continue;
+            }
             $pk = (bool) preg_match('/\bPK\b/', $col['notes']);
             $fk = $col['ref'] !== '';
             if (!$pk && !$fk) {

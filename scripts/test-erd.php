@@ -105,6 +105,7 @@ function fixture(): array
             ."| starts_at | timestamptz | no | | |\n"
             ."| held_on | date | yes | | |\n"
             ."| outcome | string | yes | | TBD(WP-2.3) |\n"
+            ."| created_by | uuid | yes | users.id | |\n"
             ."| created_at | timestamptz | no | | |\n"
             ."| updated_at | timestamptz | no | | |\n\n"
             ."### `credit_ledger_entries`\n- Kind: append-only · Spec: credit_ledger_entries · Reqs: ALP-02 · Scope: student_id\n\n{$head}"
@@ -293,6 +294,8 @@ $cases = [
     // E7 diagrams.
     ['E7 diagram stale', swap(LEDGER, '| teacher_id | uuid | no | users.id |', '| teacher_id | uuid | yes | users.id |'), [], 1,
         'ledger.md: the Mermaid diagram is stale (run php scripts/check-erd.php --write)'],
+    ['E7 audit columns stay out of the diagram', swap(LEDGER, "  users ||--o{ class_sessions : \"teacher_id\"\n", "  users ||--o{ class_sessions : \"teacher_id\"\n  users |o--o{ class_sessions : \"created_by\"\n"), [], 1,
+        'ledger.md: the Mermaid diagram is stale'],
     ['E7 diagram markers missing', swap(IDENTITY, '<!-- erd:diagram:start -->', ''), [], 1,
         'identity.md: no <!-- erd:diagram:start --> … <!-- erd:diagram:end --> block'],
     ['E7 write regenerates a stale diagram', swap(LEDGER, '| teacher_id | uuid | no | users.id |', '| teacher_id | uuid | yes | users.id |'), ['--write'], 0,

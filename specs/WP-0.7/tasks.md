@@ -18,8 +18,8 @@ No contract, no production code: order is tooling (tests first) → module docs 
 - [x] T13 `learning.md` + `messaging.md` (D-10) — verify: same
 - [x] T14 Migration order section in README (all tables, FK-safe) — verify: `php scripts/check-erd.php` (E2 green)
 - [x] T15 `pii-registry.md` + `config/privacy.php` shape (D-14, D-15, F17 retention table) — verify: `php scripts/check-erd.php` (E6 green)
-- [ ] T16 `r1-coverage.md`: 210 R1 IDs + OUT-01/02, built from `specs/WP-0.7/inventory/` — verify: `php scripts/check-erd.php` (E5 green, `R1 covered: 210`)
-- [ ] T17 Sync docs: `data-model-conventions.md` (added tables, append-only list + `join_token_log`, `recording_access_log`), `glossary.md` (new models) — verify: `php scripts/check-erd.php`; `bash scripts/verify.sh --changed`
+- [x] T16 `r1-coverage.md`: 210 R1 IDs + OUT-01/02, built from `specs/WP-0.7/inventory/` — verify: `php scripts/check-erd.php` (E5 green, `R1 covered: 210`)
+- [x] T17 Sync docs: `data-model-conventions.md` (added tables, append-only list + `join_token_log`, `recording_access_log`), `glossary.md` (new models) — verify: `php scripts/check-erd.php`; `bash scripts/verify.sh --changed`
 - [ ] T18 Owner review page (Arabic, module by module, diagrams) + roadmap station; record owner approval in `status.md` «اعتمادات صاحب المشروع» — verify: page published; owner's answer quoted in notes.md
 - [ ] T19 Verify + reviews: `bash scripts/verify.sh --all`; ledger-auditor, privacy-reviewer, traceability-checker; fix BLOCKER/MAJOR — verify: summary in notes.md
 - [ ] T20 Close: status.md, notes.md demo steps, roadmap republish, PR — verify: `php scripts/check-traceability.php --wp WP-0.7`; `php scripts/build-roadmap.php --check`

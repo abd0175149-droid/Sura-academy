@@ -22,7 +22,7 @@
 | D-02 | `compensation_lines` per executed session for `class_sessions.actual_teacher_id`, `kind = session`, amount in fils; `teacher.substitute_per_session_jod` is not read by the schema. |
 | D-03 | `compensation_lines.paid_student_count` snapshot taken at session start; trial and paused enrollments excluded by query (`class_enrollments.kind`, `status`). |
 | D-04 | `compensation_lines.period_month_on` (first day of month in `Asia/Amman`); `compensation_statements` unique `(teacher_id, period_month_on)`. |
-| D-05 | `credit_lots`: `source_entry_id`, `subscription_id`, `pool`, `qty_granted`, `effective_at`, `cycle_end_at`, `expires_at`, `frozen_days`, `unit_price_minor` + `currency` (for D-28). Derived and rebuildable from the ledger; `credit_ledger_entries.lot_id` points to it. |
+| D-05 | `credit_lots`: `subscription_id`, `pool`, `qty_granted`, `effective_at`, `cycle_end_at`, `expires_at`, `frozen_days`, `unit_price_minor` + `currency` (for D-28). Derived and rebuildable from the ledger; the lot is inserted first and `credit_ledger_entries.lot_id` points to it (ADR-007), so there is no FK cycle. |
 | D-06 | No column: the cap is a query over the last 8 scheduled sessions (`session_attendance`), setting `attendance.max_excused_per_8`. |
 | D-07 | `subscriptions.renewal_reminded_at`, `renewal_not_before_at` (72 h after the reminder). |
 | D-08 | `class_enrollments.kind` ∈ {regular, trial}; `class_sessions.type` keeps `trial` as a reserved value. |
@@ -82,13 +82,13 @@ Constraints and indexes:
 ```
 Kinds: `mutable` · `append-only` · `derived` (rebuildable from other tables) · `package` (schema owned by a Composer package, uuid morph keys) · `framework` (Laravel infrastructure). Mermaid shows PK/FK columns and relations, generated from the tables so it cannot drift; cross-module targets appear as attribute-less stubs.
 
-### 3.2 Tables per module (planned, ≈ 110)
+### 3.2 Tables per module (as built: 126 incl. package and framework tables)
 Owner per `architecture.md` §3. **NEW** = not in spec/14 (reason in the module file and in `data-model-conventions.md` §"جداول مضافة").
 
 | Module | Tables |
 | --- | --- |
-| Platform | settings, setting_versions*, rule_versions*, audit_logs*, **audit_log_personal_data** (D-14/SEC-11), files, outbox_events, **tags**, **taggables** (ADM-02, CNT-07), features (Pennant), webhook_calls (spatie; payment and video webhooks), framework: cache, cache_locks, jobs, job_batches, failed_jobs |
-| Identity | users, auth_sessions (index of Redis sessions for the device list, SEC-03), mfa_factors, student_pins, device_authorizations, **student_login_codes** (STU-01 one-time code/QR), package: roles, permissions, model_has_roles, model_has_permissions, role_has_permissions, personal_access_tokens; framework: password_reset_tokens |
+| Platform | settings, setting_versions*, rule_versions*, audit_logs*, **audit_log_personal_data** (D-14/SEC-11), files, outbox_events, **tags**, **taggables** (ADM-02, CNT-07), features (Pennant), webhook_calls (spatie; payment and video webhooks), framework: job_batches, failed_jobs (cache and queues are on Redis) |
+| Identity | users (with Fortify TOTP columns; spec `mfa_factors` merged), auth_sessions (index of Redis sessions for the device list, SEC-03), student_pins, device_authorizations, **student_login_codes** (STU-01 one-time code/QR), package: roles, permissions, model_has_roles, model_has_permissions, role_has_permissions, personal_access_tokens; framework: password_reset_tokens |
 | Families | families, guardians, students, student_profiles, family_notes, **family_invitations** (ONB-12), legal_documents (one row per version), consents*, **cookie_consents** (PUB-10, visitor has no user), data_requests, leads, lead_events, follow_up_tasks, safeguarding_incidents, **safeguarding_incident_actions** (SAFE-02 "every step") |
 | Curriculum | programs, stages, levels, curriculum_units, lessons, lesson_plans, content_items, media_assets, learning_outcomes, outcome_alignments, placement_quizzes, **placement_quiz_items** (ASM-01 questions; R2 `questions` stays separate), quiz_attempts, assessment_slots, assessments, assessment_scores, placements, trials |
 | Scheduling | classes, class_schedule_rules, class_enrollments, enrollment_history*, class_sessions, session_changes, calendar_exceptions, teacher_availability, teacher_leaves, change_requests, waitlist_entries, seat_holds, student_availability |

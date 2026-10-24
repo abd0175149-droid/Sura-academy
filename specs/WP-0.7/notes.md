@@ -13,6 +13,16 @@
 
 - T1–T3: `scripts/test-erd.php` 52/52; a copy of the checker with the `_bps` rule disabled fails exactly that case (51/52), so the suite catches a broken check. The `erd` gate stays red until T16 (ERD documents are written in T4–T16).
 
+- While writing (design §3 corrected to match):
+  - `credit_lots` has no `source_entry_id`: with ADR-007's `credit_ledger_entries.lot_id` both FKs would form a cycle. The lot is inserted first; the purchase entry points to it (unique per lot).
+  - spec `mfa_factors` merged into `users`: Fortify (ADR-002) keeps the TOTP secret, recovery codes and confirmation on `users`; R1 needs TOTP only (SEC-02).
+  - `cache`, `cache_locks`, `jobs` are not created (Redis for cache and queues per `.env.example`); `job_batches` and `failed_jobs` stay.
+  - `students.birth_month`, `birth_year`, `first_name_normalized` are nullable so erasure can empty them; required at creation (ONB-03).
+  - Diagrams omit `created_by`/`updated_by` (every human-edited table points them at `users`); test case added (53 cases).
+  - `audit_logs.request_id` renamed `request_ref` (outside identifiers end in `_ref`).
+  - Three logs joined the append-only list: `join_token_log`, `recording_access_log`, `safeguarding_incident_actions`.
+- Spec ambiguities left to the owning WP (no column change): dunning day origin vs grace (BIL-08, WP-2.4); DST notice 14 days (spec/21) vs `scheduling.dst_alert_days` 21 (WP-2.2); PAY-04 urgent-cover amount vs `teacher.substitute_per_session_jod` (WP-2.6, see D-02); whether unsampled reports skip «مُرسل» (RPT-05, WP-4.6); numbers stated without settings keys (support SLA 12 h / 1 h, waitlist hold 48 h, HELD_NO_SHOW 15 min wait, teacher late 5 min, staff idle 30 min); lead stages, safeguarding incident status, support thread status/categories (`TBD(WP-x.y)` in the ERD); retention periods not stated (applicants, teacher bank data after leaving, CRM notes, in-app notifications, cookie consents) — for the legal pack in WP-0.8.
+
 ## Verification evidence
 ```
 (paste verify --all summary)
