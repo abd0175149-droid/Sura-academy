@@ -24,11 +24,34 @@
 - Spec ambiguities left to the owning WP (no column change): dunning day origin vs grace (BIL-08, WP-2.4); DST notice 14 days (spec/21) vs `scheduling.dst_alert_days` 21 (WP-2.2); PAY-04 urgent-cover amount vs `teacher.substitute_per_session_jod` (WP-2.6, see D-02); whether unsampled reports skip «مُرسل» (RPT-05, WP-4.6); numbers stated without settings keys (support SLA 12 h / 1 h, waitlist hold 48 h, HELD_NO_SHOW 15 min wait, teacher late 5 min, staff idle 30 min); lead stages, safeguarding incident status, support thread status/categories (`TBD(WP-x.y)` in the ERD); retention periods not stated (applicants, teacher bank data after leaving, CRM notes, in-app notifications, cookie consents) — for the legal pack in WP-0.8.
 
 ## Verification evidence
+`bash scripts/verify.sh --all` on 2026-10-24, with the Linux Flutter/Node on PATH and Docker Desktop started for PostgreSQL. The first run failed only on environment (Windows Flutter on PATH, PostgreSQL down). Final run of all areas, then the api area after PostgreSQL was up:
 ```
-(paste verify --all summary)
+✅ api:pint
+✅ api:phpstan
+✅ api:tests+coverage(80)
+✅ dart:format
+✅ dart:analyze
+✅ flutter:test:packages/sura_core
+✅ flutter:test:apps/family
+✅ flutter:test:apps/teacher
+✅ web:build:apps/family
+✅ web:no-third-party-requests:apps/family
+✅ web:build:apps/teacher
+✅ web:no-third-party-requests:apps/teacher
+✅ guards
+✅ traceability
+✅ traceability:selftest
+✅ erd
+✅ erd:selftest
+✅ roadmap
 ```
+Checker after the last fix: `erd: tables 130 (modules 11) · spec/14 mapped 110/110 · migration order 130 · R1 covered 210/210 · pii columns 82` · `erd tests: 58/58`.
+
+Owner review page (Arabic, module by module, generated from the ERD files): https://claude.ai/artifact/DFNmcdpv5kA2ih3nDnE59c
 | Acceptance criterion | Evidence |
 | --- | --- |
+| Owner approves the diagrams (recorded in status.md) | pending: review page published 2026-10-24 |
+| No spec/14 table without a mapping; no R1 data requirement without columns | `php scripts/check-erd.php`: spec/14 mapped 110/110 (E1), R1 covered 210/210 with every cited `table.column` existing (E5) |
 
 ## Review findings
 Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER, 14 MAJOR), `privacy-reviewer-1.md` (0 BLOCKER, 13 MAJOR); pass 2 `ledger-auditor-2.md` (all pass-1 items resolved; 1 new BLOCKER, 3 MAJOR), `privacy-reviewer-2.md` (all resolved; 2 new MAJOR); pass 3 `ledger-auditor-3.md` (all pass-2 items resolved; 1 narrow BLOCKER, 1 MAJOR), `privacy-reviewer-3.md` (0 BLOCKER, 0 MAJOR, 2 MINOR); pass 4 `ledger-auditor-4.md` (all pass-3 items resolved; one rule-text case, schema unchanged).
