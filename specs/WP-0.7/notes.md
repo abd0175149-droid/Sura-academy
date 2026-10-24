@@ -31,7 +31,7 @@
 | --- | --- |
 
 ## Review findings
-Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER, 14 MAJOR), `privacy-reviewer-1.md` (0 BLOCKER, 13 MAJOR); pass 2 `ledger-auditor-2.md` (all pass-1 items resolved; 1 new BLOCKER, 3 MAJOR), `privacy-reviewer-2.md` (all resolved; 2 new MAJOR).
+Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER, 14 MAJOR), `privacy-reviewer-1.md` (0 BLOCKER, 13 MAJOR); pass 2 `ledger-auditor-2.md` (all pass-1 items resolved; 1 new BLOCKER, 3 MAJOR), `privacy-reviewer-2.md` (all resolved; 2 new MAJOR); pass 3 `ledger-auditor-3.md` (all pass-2 items resolved; 1 narrow BLOCKER, 1 MAJOR), `privacy-reviewer-3.md` (0 BLOCKER, 0 MAJOR, 2 MINOR).
 
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
@@ -79,6 +79,10 @@ Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER
 | privacy-reviewer (pass 2) | MAJOR | `safeguarding_incident_actions` under the strict trigger cannot be purged after 7 years | fixed: moved to `forbid_mutation_except_retention` |
 | privacy-reviewer (pass 2) | MAJOR | `record_notes` not locatable by subject; NOT NULL body with `erase` | fixed: `subject_student_id` / `subject_user_id` / `subject_family_id` FKs, action `delete_row`, retention row. A checker rule against polymorphic locate paths was not added: direct person morphs (`notifiable_id`, `sender_id`) are valid paths |
 | privacy-reviewer (pass 2) | MINOR | record_notes/legal_holds triggers; holds logic pending D-38; free-text rule wording; retention trigger SQL (SECURITY INVOKER); recipient regions + AWS hosting; neutral `restricted` reason code; `title`/`exception`/`error` columns; E8 bare `no-PII`; TCH-03 learning notes column; VPC line in design §3.3 | fixed (58 self-test cases) |
+| ledger-auditor (pass 3) | BLOCKER | post-lock type change on an expired lot: replacement takes another lot, session charged twice | fixed: replacement uses the reversed entry's lot; instant expiry judged on net lot remaining after the transaction; WP-2.3 tests every attendance mapping on an expired lot |
+| ledger-auditor (pass 3) | MAJOR | manual −N larger than the FIFO lot; +N with no open lot | fixed: split FIFO one entry per lot (`manual:<uuid>:<lot_id>`), never overdraw; +N rejected without an open lot |
+| ledger-auditor (pass 3) | MINOR | composite FK targets lacked UNIQUE; rebuild sources for `effective_at` and `cycle_no` | fixed |
+| privacy-reviewer (pass 3) | MINOR | `record_notes` could have no subject; design wording of the free-text exception | fixed |
 
 ## خطوات العرض اليدوي
 1. …

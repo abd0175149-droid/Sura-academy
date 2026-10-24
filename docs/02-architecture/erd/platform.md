@@ -180,6 +180,7 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
+- `CHECK (num_nonnulls(subject_student_id, subject_user_id, subject_family_id) >= 1)`; `subject_student_id` is required when the noted record has a `student_id`
 - `INDEX (notable_type, notable_id)`, `INDEX (subject_student_id)`, `INDEX (subject_user_id)`, `INDEX (subject_family_id)`; trigger: UPDATE and DELETE only for `sura_retention` (erasure or redaction); kept as long as the noted record's period.
 - For ADJUSTMENT_MANUAL, REVERSAL and RBAC-04 sensitive actions the note is written in the same action as the record (WP-2.3, WP-1.3 test it).
 

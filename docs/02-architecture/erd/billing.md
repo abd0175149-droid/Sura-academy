@@ -317,7 +317,7 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (idempotency_key)`, `UNIQUE (provider, provider_ref) WHERE provider_ref IS NOT NULL` (no double processing)
+- `UNIQUE (idempotency_key)`, `UNIQUE (provider, provider_ref) WHERE provider_ref IS NOT NULL` (no double processing), `UNIQUE (id, currency)` (target of the allocations' composite FK)
 - `CHECK ((review_status = 'none') = (review_reason_code IS NULL))`; allocations, lots and activation need `status = 'succeeded' AND review_status <> 'needs_review'`.
 - `INDEX (family_id, created_at)`, `INDEX (status)`
 
@@ -497,7 +497,7 @@ Constraints and indexes:
 | created_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (idempotency_key)`, `UNIQUE (reverses_entry_id)`, `UNIQUE (source_ledger_entry_id) WHERE source_ledger_entry_id IS NOT NULL`, `INDEX (family_id, created_at)`
+- `UNIQUE (idempotency_key)`, `UNIQUE (reverses_entry_id)`, `UNIQUE (id, family_id, currency)` (target of `credit_entry_id`'s composite FK), `UNIQUE (source_ledger_entry_id) WHERE source_ledger_entry_id IS NOT NULL`, `INDEX (family_id, created_at)`
 - Trigger `forbid_mutation`; corrections are `REVERSAL` rows.
 - `CHECK ((type IN ('PAYMENT_USE','EXPIRY')) = (credit_entry_id IS NOT NULL))`; composite FK `(credit_entry_id, family_id, currency) → wallet_entries (id, family_id, currency)`.
 - Remaining per credit = its amount + Σ linked `PAYMENT_USE`/`EXPIRY` rows and their REVERSALs; every write takes an advisory lock on (`family_id`, `currency`) so concurrent uses cannot overdraw.
