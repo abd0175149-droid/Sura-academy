@@ -20,7 +20,7 @@
 - سجل التدقيق يحتفظ بمعرّف الفاعل فقط. عنوانه وجهازه والقيم الشخصية في `audit_log_personal_data`، ويُحذف ذلك الصف. لا يُسجَّل عنوان ولا جهاز حين يكون الفاعل طفلاً.
 - الحذف القانوني ينفّذه دور قاعدة البيانات `sura_retention` فقط، بدالة حذف لكل جدول (data-model-conventions.md)، ويُسجَّل كل حذف في `audit_logs` (`privacy.erased`، `retention.deleted`) بالمعرّفات فقط.
 - طلب حذف بيانات طفل يحذف أيضاً تسجيلات الجلسات التي حضرها ضمن مدة احتفاظها، ويجدها عبر `session_attendance.student_id` (D-14 «الملفات والتسجيلات تُحذف نهائياً»، D-11 «ما لم يُطلب حذفها»).
-- بانتظار D-38 (Open): إن اعتُمد الخيار أ، لا يُحذف ولا يُمحى أي صف عليه تعليق قانوني غير محرر في `legal_holds`.
+- لا يُحذف ولا يُمحى أي صف عليه تعليق قانوني غير محرر في `legal_holds` (D-38، الخيار أ).
 - لا تُرسل بيانات شخصية إلى السجلات التقنية ولا Sentry ولا التحليلات ولا أي نموذج ذكاء اصطناعي (SEC-12، ADR-009 §4 و§7).
 
 ## الأعمدة
@@ -186,7 +186,7 @@ return [
         'safeguarding_incidents' => ['clock' => 'closed_at', 'years' => 7, 'action' => 'delete_row', 'source' => 'D-15'],
         // … one entry per row of the retention table
     ],
-    // Pending D-38 (Open): true only if option a is approved.
-    'honour_legal_holds' => null,
+    // D-38 option a: both jobs skip any row with an unreleased legal hold.
+    'honour_legal_holds' => true,
 ];
 ```

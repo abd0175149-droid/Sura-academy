@@ -131,7 +131,7 @@ CREATE TRIGGER credit_ledger_entries_append_only
 | `teacher_interviews` | Teachers | TOP-01: نموذج تقييم المقابلة (WP-0.7) |
 | `credit_lot_extensions` | Ledger | D-05: تمديد الدفعة بمدة التجميد صفاً لا تعديلاً (WP-0.7) |
 | `record_notes` | Platform | النص الحر لجداول الإضافة فقط، قابل للمحو (WP-0.7) |
-| `legal_holds` | Platform | D-38 (Open): تعليق الحذف لأدلة بلاغ حماية (WP-0.7) |
+| `legal_holds` | Platform | D-38 (الخيار أ): تعليق الحذف لأدلة بلاغ حماية (WP-0.7) |
 | `invoice_number_series` | Billing | BIL-11: ترقيم متسلسل بلا فجوات (WP-0.7) |
 | `job_batches`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `model_has_permissions` | Platform، Identity | جداول Laravel والحزم (WP-0.7) |
 

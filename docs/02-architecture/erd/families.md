@@ -411,7 +411,7 @@ Constraints and indexes:
 
 Constraints and indexes:
 - `INDEX (status, reported_at)`
-- Kept 7 years (D-15). While an incident is open, records tied to it may be put on hold (`legal_holds`, D-38). Technical problems from the session emergency button go to `support_threads`, not here.
+- Kept 7 years (D-15). While an incident is open, records tied to it can be put on hold by the safeguarding officer (`legal_holds`, D-38). Technical problems from the session emergency button go to `support_threads`, not here.
 
 ### `safeguarding_incident_actions`
 - Kind: append-only · Spec: NEW (SAFE-02 «سجل مقيد بكل خطوة متخذة») · Reqs: SAFE-02 · Scope: none (as the incident)

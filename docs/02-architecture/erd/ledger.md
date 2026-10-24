@@ -161,7 +161,7 @@ Constraints and indexes:
 - Rebuildable: purchase entry (`qty`) + `payments.succeeded_at` (`effective_at`, D-05) + `payment_allocations.amount_minor` + order of the subscription's allocations (`cycle_no`) + `rule_versions.snapshot` + `credit_lot_extensions` (ADR-007 §5 note).
 - `INDEX (student_id, pool, expires_at)`: consumption takes the lot that expires first (FIFO by `expires_at`, D-05)
 - Remaining = Σ `qty` of ledger entries with this `lot_id`, the purchase included; a daily check compares it with `qty_granted` minus usage.
-- Wallet conversion (D-28) = `amount_paid_minor × remaining ÷ qty_granted`, rounded once at the end (rounding rule: D-40), so the wallet never drifts from what was paid.
+- Wallet conversion (D-28) = `amount_paid_minor × remaining ÷ qty_granted`, rounded down once at the end (D-40), so the wallet never exceeds what was paid.
 
 ### `credit_lot_extensions`
 - Kind: append-only · Spec: NEW (D-05 «يمدد expires_at … بمدة التجميد الفعلية»; ledger-auditor review) · Reqs: BIL-14 · Scope: via lot → family

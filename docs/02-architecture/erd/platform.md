@@ -185,7 +185,7 @@ Constraints and indexes:
 - For ADJUSTMENT_MANUAL, REVERSAL and RBAC-04 sensitive actions the note is written in the same action as the record (WP-2.3, WP-1.3 test it).
 
 ### `legal_holds`
-- Kind: mutable · Spec: NEW (D-38, Open: keep safeguarding evidence past ordinary retention) · Reqs: SAFE-02, SAFE-05 · Scope: none (safeguarding officer and system admin)
+- Kind: mutable · Spec: NEW (D-38: keep safeguarding evidence past ordinary retention) · Reqs: SAFE-02, SAFE-05 · Scope: none (safeguarding officer and system admin)
 
 | Column | Type | Null | References | Notes |
 | --- | --- | --- | --- | --- |
@@ -200,7 +200,7 @@ Constraints and indexes:
 
 Constraints and indexes:
 - `UNIQUE (safeguarding_incident_id, holdable_type, holdable_id)`; DELETE is rejected for every role; placing and releasing a hold each write a `safeguarding_incident_actions` row, `INDEX (holdable_type, holdable_id) WHERE released_at IS NULL`
-- Pending D-38: if option a is chosen, the retention and erasure jobs skip any record with an unreleased hold. Until then the table exists without logic.
+- D-38 (Approved, option a): the retention and erasure jobs skip any record with an unreleased hold, until the incident closes or its 7-year period ends.
 
 ### `files`
 - Kind: mutable · Spec: files · Reqs: SEC-09, HW-06, CNT-07, BIL-09, BIL-11, RPT-06, MSG-01 · Scope: via the owning record

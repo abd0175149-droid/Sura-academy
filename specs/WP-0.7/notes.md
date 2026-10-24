@@ -4,6 +4,8 @@
 - D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12, D-14, D-26, D-28, D-30 (Default): applied as in design.md §1.
 - Also consulted (Default): D-15, D-16, D-18, D-24, D-27, D-29. D-13 (Open) only needs a nullable `consents.verification_method`, as D-13 itself prescribes.
 - D-37 (Approved 2026-10-24, option a): `student_availability` stores weekday + local time + family IANA zone.
+- D-38 (Approved 2026-10-24, option a): legal holds honoured by retention and erasure. D-40 (Approved 2026-10-24, option b): wallet conversion rounds down. Owner's reply on the review page: «أ (مقترح): مسؤول الحماية «يعلّق» حذف سجلات … ب: التقريب لأسفل دائماً».
+- D-39 (Open): marketing consent, for the WP-0.8 legal pack.
 - Design and tasks approved by the owner on 2026-10-24 («اوافق على المقترحات», approval page https://claude.ai/artifact/9NpNhMNxBqzodnAg14jF3z).
 
 ## Deviations / surprises

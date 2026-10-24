@@ -32,7 +32,7 @@
 | D-12 | `calendar_exceptions.status` ∈ {tentative, confirmed}, `confirmed_at`. |
 | D-14 | Personal data lives in registered columns/tables (§3.3); financial, ledger and history rows keep opaque ids only. Audit logs keep the actor id; IP, user agent and personal before/after values go to an erasable side table `audit_log_personal_data`. |
 | D-26 | `learning_outcomes` (stable `code` like `AR-L2-R-03`, `variety`) and `outcome_alignments`; no UI. CNT-09 "can do" statements are `learning_outcomes` rows of a level, so `level_outcomes` is merged into it. |
-| D-28 | Ledger type `CONVERSION_TO_WALLET` (one per lot); `wallet_entries.source_ledger_entry_id`; amount = `amount_paid_minor × remaining ÷ qty_granted`, rounded once (rounding rule: D-40). |
+| D-28 | Ledger type `CONVERSION_TO_WALLET` (one per lot); `wallet_entries.source_ledger_entry_id`; amount = `amount_paid_minor × remaining ÷ qty_granted`, rounded down once (D-40). |
 | D-30 | `seat_holds`: `class_id`, `student_id`, `reason` ∈ {payment, waitlist_offer}, `expires_at`, `released_at`, `converted_at`. |
 
 Also consulted because they shape columns (Default): D-13 (Open, not in this WP's row) only needs `consents.verification_method` as a nullable string with no CHECK until it is decided, which is the "pluggable `VpcMethod`" D-13 itself prescribes; D-15 retention defaults feed the registry; D-16 recording residency (`recordings.storage_region`); D-18 `variety = msa`; D-24 maintenance-window override (`class_sessions.maintenance_override_reason`); D-27 freeze rules read from `subscription_events`; D-29 second trial is a `CREDIT_TRIAL` entry with `reason`.
@@ -142,7 +142,7 @@ None in the product. The owner reviews the diagrams on an Arabic artifact page (
 
 ## 8. Risks & open questions
 - **D-37 (Approved 2026-10-24, option a):** ONB-13 says student availability is "stored in UTC"; a weekly window stored in UTC moves by an hour for the family at every DST change (constitution Art. 6). Recommended: store weekday + local time + the family's IANA zone, like class patterns. Blocks only the `student_availability` columns; the rest can proceed.
-- **D-38 (Open):** legal hold for safeguarding evidence vs ordinary retention; `legal_holds` is modelled, policy pending.
+- **D-38 (Approved 2026-10-24, option a):** legal hold for safeguarding evidence; retention and erasure skip held records.
 - **D-39 (Open):** marketing-message consent (CASL); no purpose added.
 - Owner approval of the diagrams at the end (acceptance criterion 1) is recorded in `status.md` «اعتمادات صاحب المشروع».
 - Spec ambiguities that do not change columns (dunning day origin, 14 vs 21 DST notice days, PAY-04 amount, report sampling vs states, settings keys missing for stated numbers) are listed in notes.md with the WP that must resolve them; they are not decided here.
