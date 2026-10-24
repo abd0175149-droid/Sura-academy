@@ -9,6 +9,7 @@
 | الطالب / الطفل | Student | `Student` | `students` | Families | حساب مُدار بلا بريد ولا كلمة مرور |
 | ملف الطالب | Student profile | `StudentProfile` | `student_profiles` | Families | |
 | رمز الطفل | Child PIN | `StudentPin` | `student_pins` | Identity | مخزّن مشفراً (hash) |
+| رمز دخول لمرة واحدة | Student login code | `StudentLoginCode` | `student_login_codes` | Identity | STU-01؛ رمز أو QR من بوابة ولي الأمر (WP-0.7) |
 | جهاز مفوّض | Authorized device | `DeviceAuthorization` | `device_authorizations` | Identity | |
 | عميل محتمل | Lead | `Lead` | `leads` | Families | |
 | قائمة الانتظار | Waitlist entry | `WaitlistEntry` | `waitlist_entries` | Scheduling | |
@@ -17,6 +18,8 @@
 | الدرس / خطة الدرس | Lesson / Lesson plan | `Lesson` / `LessonPlan` | `lessons` / `lesson_plans` | Curriculum | |
 | عنصر محتوى | Content item | `ContentItem` | `content_items` | Curriculum | |
 | نتاج تعلم | Learning outcome | `LearningOutcome` | `learning_outcomes` | Curriculum | CR-002؛ رمز ثابت مثل `AR-L2-R-03` |
+| ربط بنتاج | Outcome alignment | `OutcomeAlignment` | `outcome_alignments` | Curriculum | OUT-02 (D-26) |
+| بند اختبار المستوى | Placement quiz item | `PlacementQuizItem` | `placement_quiz_items` | Curriculum | ASM-01 (WP-0.7) |
 | الشعبة | Class (group) | `ClassGroup` | `classes` | Scheduling | `Class` كلمة محجوزة في PHP |
 | قاعدة جدول الشعبة | Schedule rule | `ClassScheduleRule` | `class_schedule_rules` | Scheduling | ساعة محلية + منطقة IANA |
 | تسجيل في شعبة | Enrollment | `ClassEnrollment` | `class_enrollments` | Scheduling | `kind`: regular, trial (D-08) |
@@ -27,6 +30,7 @@
 | الغرفة الافتراضية | Live room | `LiveRoom` | `live_rooms` | Live | |
 | حدث مشارك | Participant event | `ParticipantEvent` | `participant_events` | Live | |
 | التسجيل المرئي | Recording | `Recording` | `recordings` | Live | |
+| دردشة الحصة | Session chat message | `SessionChatMessage` | `session_chat_messages` | Live | CLS-07؛ عامة فقط (WP-0.7) |
 | حضور الجلسة | Session attendance | `SessionAttendance` | `session_attendance` | Ledger | الحالات: PRESENT, LATE, PARTIAL, ABSENT_EXCUSED, ABSENT_UNEXCUSED |
 | طلب غياب | Absence request | `AbsenceRequest` | `absence_requests` | Ledger | |
 | قيد الدفتر | Ledger entry | `CreditLedgerEntry` | `credit_ledger_entries` | Ledger | للإضافة فقط |
@@ -43,15 +47,25 @@
 | الواجب / التسليم | Assignment / Submission | `Assignment` / `Submission` | `assignments` / `submissions` | Learning | |
 | التقرير | Report | `Report` | `reports` | Learning | |
 | المعلمة | Teacher | `Teacher` | `teachers` | Teachers | |
+| مستوى مؤهلة له | Teacher level | `TeacherLevel` | `teacher_levels` | Teachers | TOP-02، SCH-11 (WP-0.7) |
+| حساب بنكي للمعلمة | Teacher bank account | `TeacherBankAccount` | `teacher_bank_accounts` | Teachers | مشفّر (SEC-08، WP-0.7) |
+| مقابلة توظيف | Teacher interview | `TeacherInterview` | `teacher_interviews` | Teachers | TOP-01 (WP-0.7) |
 | بند مستحقات / كشف | Compensation line / statement | `CompensationLine` / `CompensationStatement` | `compensation_lines` / `compensation_statements` | Teachers | بالفلس (JOD × 1000) |
 | قالب رسالة | Message template | `MessageTemplate` | `message_templates` | Messaging | |
+| إصدار قالب | Message template version | `MessageTemplateVersion` | `message_template_versions` | Messaging | NOT-07 (WP-0.7) |
+| عنوان موقوف | Suppressed recipient | `SuppressedRecipient` | `suppressed_recipients` | Messaging | NOT-09؛ العنوان مجزأ (WP-0.7) |
 | إشعار داخل التطبيق | In-app notification | Laravel `DatabaseNotification` | `notifications` | Messaging | جدول Laravel القياسي |
 | سجل التسليم | Delivery log | `DeliveryLog` | `delivery_logs` | Messaging | |
-| تذكرة دعم | Support thread | `SupportThread` | `support_threads` | Messaging | |
+| تذكرة دعم / رسالة فيها | Support thread / message | `SupportThread` / `SupportMessage` | `support_threads` / `support_messages` | Messaging | `messages` في المواصفات صار `support_messages` (WP-0.7) |
 | الإعداد / إصداره | Setting / version | `Setting` / `SettingVersion` | `settings` / `setting_versions` | Platform | |
 | سجل التدقيق | Audit log | `AuditLog` | `audit_logs` | Platform | للإضافة فقط |
+| الجزء الشخصي من التدقيق | Audit personal data | `AuditLogPersonalData` | `audit_log_personal_data` | Platform | قابل للمحو (D-14، WP-0.7) |
+| وسم | Tag | `Tag` | `tags` / `taggables` | Platform | ADM-02، CNT-07 (WP-0.7) |
 | حدث صادر | Outbox event | `OutboxEvent` | `outbox_events` | Platform | |
 | بلاغ حماية | Safeguarding incident | `SafeguardingIncident` | `safeguarding_incidents` | Families | وصول مقيد |
+| خطوة في البلاغ | Safeguarding incident action | `SafeguardingIncidentAction` | `safeguarding_incident_actions` | Families | للإضافة فقط (SAFE-02، WP-0.7) |
+| دعوة أسرة | Family invitation | `FamilyInvitation` | `family_invitations` | Families | ONB-12 (WP-0.7) |
+| موافقة ملفات الارتباط | Cookie consent | `CookieConsent` | `cookie_consents` | Families | PUB-10؛ للزائر بلا حساب (WP-0.7) |
 | وثيقة قانونية / موافقة | Legal document / Consent | `LegalDocumentVersion` / `Consent` | `legal_documents` / `consents` | Families | الموافقة لا تُعدَّل |
 | طلب بيانات | Data request | `DataRequest` | `data_requests` | Families | PRV-07 |
 | التجربة | Trial | `Trial` | `trials` | Curriculum (Assessment) | |

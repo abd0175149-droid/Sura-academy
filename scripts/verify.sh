@@ -100,6 +100,13 @@ elif have php; then
   if touches '^scripts/(check|test)-traceability\.php'; then
     gate "traceability:selftest" php scripts/test-traceability.php
   fi
+  # The data-model baseline agrees with spec/14, the conventions and traceability (WP-0.7).
+  if touches '^(docs/02-architecture/|docs/01-product/spec/14-|docs/03-plan/traceability\.md|scripts/(check|test)-erd\.php)'; then
+    gate "erd" php scripts/check-erd.php
+  fi
+  if touches '^scripts/(check|test)-erd\.php'; then
+    gate "erd:selftest" php scripts/test-erd.php
+  fi
   # The owner's roadmap page is built from these files; keep them buildable.
   if touches '^(docs/03-plan/|scripts/build-roadmap\.php)'; then
     gate "roadmap" php scripts/build-roadmap.php --check
