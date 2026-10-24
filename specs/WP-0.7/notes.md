@@ -109,6 +109,7 @@ Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER
 | ledger-auditor (pass 3) | MINOR | composite FK targets lacked UNIQUE; rebuild sources for `effective_at` and `cycle_no` | fixed |
 | privacy-reviewer (pass 3) | MINOR | `record_notes` could have no subject; design wording of the free-text exception | fixed |
 | ledger-auditor (pass 4) | BLOCKER (narrow) | replacement reusing the reversed lot when the reversed entry freed nothing (EXCUSED 0 → −1) | fixed in rule text (no schema change): reuse only the freed quantity; extra charge FIFO or absorbed in the expiry entry; daily check adds lot remaining < 0 |
+| traceability-checker | — | READY TO CLOSE: no BLOCKER or MAJOR; all deliverables, both acceptance criteria, status, decisions, demo steps and station verified; `verify --all` 18/18 with Linux Flutter and Node on PATH | — |
 
 ## Hand-offs
 - **WP-2.3 (ledger engine), tests the schema already supports** (ledger-auditor pass 4):
