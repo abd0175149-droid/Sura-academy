@@ -11,6 +11,8 @@
 - spec/14 names ≈ 110 tables while its intro says "نحو 90".
 - The literal unique key `(student_id, session_id, type)` on every ledger type would block a second REVERSAL in one session. The constitution limits it to "قيود الحصص"; design §3.3 applies it to the four session-linked types only.
 
+- T1–T3: `scripts/test-erd.php` 52/52; a copy of the checker with the `_bps` rule disabled fails exactly that case (51/52), so the suite catches a broken check. The `erd` gate stays red until T16 (ERD documents are written in T4–T16).
+
 ## Verification evidence
 ```
 (paste verify --all summary)

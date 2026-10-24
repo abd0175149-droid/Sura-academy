@@ -3,9 +3,9 @@
 Status legend: [ ] todo · [x] done. Each task ≤ ~2h. Verification command required.
 No contract, no production code: order is tooling (tests first) → module docs → registry/coverage → docs/close.
 
-- [ ] T1 Checker self-test first: `scripts/test-erd.php` with the fixture tree and one failing case per check E0–E7 (design §2) — verify: `php scripts/test-erd.php` fails because `scripts/check-erd.php` does not exist yet
-- [ ] T2 Checker, part 1: parsing (spec/14 domain table, traceability R1 IDs, conventions append-only list, module files), E1 mapping, E2 migration order, E5 coverage, E6 registry — verify: `php scripts/test-erd.php` (those cases green)
-- [ ] T3 Checker, part 2: E3 convention lint, E4 append-only, E7 Mermaid generation and `--write`; `verify.sh` gates `erd` and `erd:selftest` — verify: `php scripts/test-erd.php` all green; `bash scripts/verify.sh --changed`
+- [x] T1 Checker self-test first: `scripts/test-erd.php` with the fixture tree and one failing case per check E0–E7 (design §2) — verify: `php scripts/test-erd.php` fails because `scripts/check-erd.php` does not exist yet
+- [x] T2 Checker, part 1: parsing (spec/14 domain table, traceability R1 IDs, conventions append-only list, module files), E1 mapping, E2 migration order, E5 coverage, E6 registry — verify: `php scripts/test-erd.php` (those cases green)
+- [x] T3 Checker, part 2: E3 convention lint, E4 append-only, E7 Mermaid generation and `--write`; `verify.sh` gates `erd` and `erd:selftest` — verify: `php scripts/test-erd.php` all green; `bash scripts/verify.sh --changed`
 - [ ] T4 `erd/README.md`: format rules, module index, full spec/14 mapping table (every spec name with a disposition) — verify: `php scripts/check-erd.php` (E1 fails only for module files not written yet)
 - [ ] T5 `platform.md` + `identity.md` (incl. package and framework tables) — verify: `php scripts/check-erd.php --write && php scripts/check-erd.php`
 - [ ] T6 `families.md` (consents, legal documents, data requests, leads, safeguarding) — verify: same
