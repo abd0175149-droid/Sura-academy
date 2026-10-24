@@ -31,8 +31,44 @@
 | --- | --- |
 
 ## Review findings
+Full reports: `specs/WP-0.7/reviews/ledger-auditor-1.md` (2 BLOCKER, 15 MAJOR, 12 MINOR), `specs/WP-0.7/reviews/privacy-reviewer-1.md` (0 BLOCKER, 12 MAJOR, 16 MINOR).
+
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
+| ledger-auditor | BLOCKER | A→B→A re-post as ADJUSTMENT_MANUAL escapes the key | fixed: reinstate by reversing the reversal; design §3.3, ledger.md, ADR-007 §6 note |
+| ledger-auditor | BLOCKER | `compensation_lines` unique per teacher allows double pay | fixed: `UNIQUE (session_id, kind)` except adjustments |
+| ledger-auditor | MAJOR | integer unit price rounds before D-28 conversion | fixed: `credit_lots.amount_paid_minor`, one rounding at the end |
+| ledger-auditor | MAJOR | `credit_lots` mutable "derived" table | fixed: source table, update trigger, append-only `credit_lot_extensions` |
+| ledger-auditor | MAJOR | lot not tied to its payment; renewals unguarded | fixed: `payment_allocation_id` unique, `cycle_no`, `subscriptions.pending_renewal_payment_id`, key formats |
+| ledger-auditor | MAJOR | conventions and ADR-007 still state the old key | fixed: conventions §indexes, ADR-007 §6 note |
+| ledger-auditor | MAJOR | two live attendance-type entries per session | fixed: `session_attendance.ledger_entry_id` under row lock + daily reconciliation |
+| ledger-auditor | MAJOR | reversal integrity and pool mixing app-only | fixed: `validate_reversal()`, composite FK, pool/lot/sign CHECKs |
+| ledger-auditor | MAJOR | second wallet conversion per lot possible | fixed: `UNIQUE (lot_id) WHERE type = 'CONVERSION_TO_WALLET'` |
+| ledger-auditor | MAJOR | wallet has no per-credit tracking | fixed: `wallet_entries.credit_entry_id` |
+| ledger-auditor | MAJOR | wallet without `rule_version_id` | fixed |
+| ledger-auditor | MAJOR | no place for amount/currency mismatch | fixed: `payments.review_status` flag beside the state machine (no new state, so no D-xx) |
+| ledger-auditor | MAJOR | invoices mutable, duplicate invoice per payment | fixed: issue trigger, `UNIQUE (payment_id) WHERE kind = 'invoice'`, refunds `UNIQUE (credit_note_invoice_id)` |
+| ledger-auditor | MAJOR | `compensation_lines` without idempotency key; approved lines mutable | fixed: key + freeze triggers on lines and statements |
+| ledger-auditor | MAJOR | no lock targets named | fixed: advisory locks per (student, pool) and (family, currency); refunds lock the payment |
+| ledger-auditor | MAJOR | `end_processed_at` vs WP-2.3 `ledger_processed_at`; posting moment unclear | fixed: renamed; entries post once at lock |
+| ledger-auditor | MINOR | reason/actor/sign CHECKs; remaining formula; snapshot rebuild; rule_versions timeline; trigger split; outcome/status CHECK; PayTabs event id; invoice counter, totals, refund provider ref; duplicate PaymentSucceeded; JOD CHECKs | fixed |
+| ledger-auditor | MINOR | credit-ledger skill says the trial pool has its own lot | deferred to WP-2.3: the ERD keeps `CHECK (pool = 'paid')` on lots; align the skill text when the engine is built |
+| ledger-auditor | MINOR | discount rate in rule and setting | fixed by note: the rule row copies the setting version |
+| privacy-reviewer | MAJOR | retention cannot delete from append-only tables | fixed: two trigger functions, `sura_retention` purge only (conventions) |
+| privacy-reviewer | MAJOR | free text in append-only tables | fixed: `reason_code` + erasable `record_notes` |
+| privacy-reviewer | MAJOR | untagged free text | fixed: tagged and registered; checker rule E8 (free text needs PII or `no-PII:`), 57 self-test cases |
+| privacy-reviewer | MAJOR | `teachers.status_reason` leaks safeguarding detail | fixed: `status_reason_code`; incident holds `subject_teacher_id` |
+| privacy-reviewer | MAJOR | registry cannot locate rows; two config shapes | fixed: Locate by column (checked), single shape in pii-registry.md, design §3.4 aligned |
+| privacy-reviewer | MAJOR | recordings erasure and consent evidence | fixed: erasure deletes attended sessions' recordings (D-14, D-11 literal); `recordings.consent_snapshot` |
+| privacy-reviewer | MAJOR | retention destroys safeguarding evidence | D-38 Open; `legal_holds` modelled; first-name snapshot on the incident |
+| privacy-reviewer | MAJOR | student IP in audit | fixed: never recorded for a student actor (WP-1.3 test) |
+| privacy-reviewer | MAJOR | core child data retention undefined | fixed as proposal (`departed_at` rules) + legal list for WP-0.8 |
+| privacy-reviewer | MAJOR | export file retention | fixed: signed link ≤ 10 min, logged, deleted after 30 days (proposed) |
+| privacy-reviewer | MAJOR | chat editable | fixed: `session_chat_messages` append-only |
+| privacy-reviewer | MAJOR | VPC gate not stated | fixed: invariant in `students`, WP-1.5 test; ops never create children |
+| privacy-reviewer | MAJOR | fallback link to third parties | fixed: allow-list to our own video project, in-app route in child mode |
+| privacy-reviewer | MINOR | marketing consent | D-39 Open |
+| privacy-reviewer | MINOR | the other 15 (append-only audit side table, retention rows, partial PII columns, webhook subjects, recipients table, cookie consents append-only, PIN pepper, region CHECK + `copied_at`, admin access reason, TCH-03 projection, STU-10 note, immutable incident description, `child_age`, converted leads, `notifiable_id` text) | fixed |
 
 ## خطوات العرض اليدوي
 1. …

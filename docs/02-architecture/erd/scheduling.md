@@ -156,12 +156,12 @@ erDiagram
 | age_min | smallint | no | | SCH-01 |
 | age_max | smallint | no | | |
 | capacity | smallint | no | | between `class.capacity_min` and `class.capacity_max` (2–4) unless overridden |
-| capacity_override_reason | text | yes | | supervisor permission + reason (SCH-01) |
+| capacity_override_reason | text | yes | | PII; supervisor permission + reason (SCH-01) |
 | capacity_override_by | uuid | yes | users.id | |
 | session_minutes | smallint | no | | from `session.duration_by_age` when created (SCH-16) |
 | ref_timezone | string | no | | IANA reference zone of most target families (ADR-008 §2) |
 | status | string | no | | values: draft\|open\|active\|suspended\|completed (SCH-02, state-machines.md) |
-| status_reason | text | yes | | required for `suspended` |
+| status_reason | text | yes | | PII; required for `suspended` |
 | starts_on | date | no | | |
 | published_at | timestamptz | yes | | listed on the public schedule while `open` (PUB-04) |
 | created_by | uuid | yes | users.id | |
@@ -205,7 +205,7 @@ Constraints and indexes:
 | class_id | uuid | no | classes.id | |
 | student_id | uuid | no | students.id | |
 | family_id | uuid | no | families.id | |
-| reason | string | no | | values: payment\|waitlist_offer (D-30 15 minutes; waitlist invitation 48 hours, 08:32) |
+| reason | string | no | | no-PII: fixed values; values: payment\|waitlist_offer (D-30 15 minutes; waitlist invitation 48 hours, 08:32) |
 | expires_at | timestamptz | no | | |
 | released_at | timestamptz | yes | | expired or cancelled |
 | converted_at | timestamptz | yes | | became an enrollment |
@@ -254,7 +254,7 @@ Constraints and indexes:
 | from_state | string | yes | | null for creation; enrollment status values |
 | to_state | string | no | | enrollment status values |
 | actor_id | uuid | yes | users.id | null for system jobs |
-| reason | text | yes | | |
+| reason_code | string | yes | | TBD(WP-2.2); free text goes to `record_notes` |
 | occurred_at | timestamptz | no | | |
 | created_at | timestamptz | no | | |
 
@@ -282,13 +282,13 @@ Constraints and indexes:
 | actual_started_at | timestamptz | yes | | teacher's first entry; 5 minutes late alerts operations (05:31) |
 | actual_ended_at | timestamptz | yes | | |
 | replaces_session_id | uuid | yes | class_sessions.id | makeup for a postponed or cancelled session (state-machines.md, SCH-12) |
-| needs_review_reason | string | yes | | values: dst_gap\|dst_overlap (ADR-008 §4) |
-| maintenance_override_reason | text | yes | | D-24 supervisor override |
-| recording_blocked_reason | string | yes | | values: missing_consent (D-11) |
+| needs_review_reason | string | yes | | no-PII: fixed values; values: dst_gap\|dst_overlap (ADR-008 §4) |
+| maintenance_override_reason | text | yes | | PII; D-24 supervisor override |
+| recording_blocked_reason | string | yes | | no-PII: fixed values; values: missing_consent (D-11) |
 | lesson_id | uuid | yes | lessons.id | curriculum progress (TCH-06) |
 | teacher_notes | text | yes | | PII; session notes (CLS-11) |
 | attendance_locked_at | timestamptz | yes | | after `attendance.teacher_confirm_hours`; later edits need ATT-05 |
-| end_processed_at | timestamptz | yes | | end-of-session processing ran (ATT-08, once) |
+| ledger_processed_at | timestamptz | yes | | ledger entries posted, once, at attendance lock (ATT-08; name used by WP-2.3) |
 | dst_notice_sent_at | timestamptz | yes | | SCH-06 |
 | created_by | uuid | yes | users.id | |
 | updated_by | uuid | yes | users.id | |
@@ -298,6 +298,7 @@ Constraints and indexes:
 Constraints and indexes:
 - No overlap for one teacher: `EXCLUDE USING gist (COALESCE(actual_teacher_id, teacher_id) WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE status NOT IN ('cancelled','postponed')` (spec/14)
 - `UNIQUE (class_id, starts_at) WHERE status <> 'cancelled'`, `INDEX (starts_at)`, `INDEX (status, starts_at)`
+- `CHECK ((status IN ('completed','cancelled','postponed')) = (outcome IS NOT NULL))`, `CHECK ((outcome = 'POSTPONED_GROUP') = (status = 'postponed'))`; an outcome change after `ledger_processed_at` goes through one action that posts reversals and compensation.
 - The live room is 1:1 through `live_rooms.session_id` (spec field `live_room_id` is not duplicated here).
 
 ### `session_changes`
@@ -310,7 +311,7 @@ Constraints and indexes:
 | change_kind | string | no | | values: reschedule\|cancel\|postpone\|teacher_change |
 | scope | string | no | | values: single\|pattern_forward (SCH-09) |
 | reason_code | string | yes | | values: teacher_absence\|holiday\|technical\|group_postponement (SCH-10) |
-| reason_note | text | yes | | |
+| reason_note | text | yes | | PII |
 | old_starts_at | timestamptz | yes | | |
 | new_starts_at | timestamptz | yes | | |
 | old_teacher_id | uuid | yes | teachers.id | |
@@ -377,7 +378,7 @@ Constraints and indexes:
 | starts_at | timestamptz | no | | |
 | ends_at | timestamptz | no | | |
 | status | string | no | | values: requested\|approved\|rejected (proposed; TCH-09 needs admin approval; emergency reports alert operations at once) |
-| reason | text | yes | | |
+| reason | text | yes | | PII (may hold health details) |
 | decided_by | uuid | yes | users.id | |
 | decided_at | timestamptz | yes | | |
 | created_at | timestamptz | no | | |
@@ -399,11 +400,11 @@ Constraints and indexes:
 | class_id | uuid | yes | classes.id | |
 | session_id | uuid | yes | class_sessions.id | |
 | request_type | string | no | | values: session_time\|class_change\|pattern (proposed) |
-| details | text | yes | | |
+| details | text | yes | | PII |
 | status | string | no | | values: open\|approved\|rejected\|withdrawn (proposed; a request never changes the schedule by itself, TCH-11) |
 | decided_by | uuid | yes | users.id | |
 | decided_at | timestamptz | yes | | |
-| decision_note | text | yes | | |
+| decision_note | text | yes | | PII |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
 
@@ -421,7 +422,7 @@ Constraints and indexes:
 | lead_id | uuid | yes | leads.id | visitor waitlist (PUB-08) |
 | level_id | uuid | yes | levels.id | |
 | class_id | uuid | yes | classes.id | waiting for a specific full class (ONB-08) |
-| child_age | smallint | yes | | visitor form only, when no student exists |
+| child_age | smallint | yes | | PII; visitor form only, when no student exists; deleted with the lead |
 | preferred_windows | jsonb | yes | | `[{weekday, local_start, local_end, timezone}]` for leads (D-37 format); families use `student_availability` |
 | status | string | no | | values: waiting\|offered\|placed\|withdrawn\|expired (proposed) |
 | seat_hold_id | uuid | yes | seat_holds.id | 48-hour reserved seat in the invitation (08:32) |

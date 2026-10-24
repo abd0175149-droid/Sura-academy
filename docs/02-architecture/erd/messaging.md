@@ -137,7 +137,7 @@ Constraints and indexes:
 | title_en | string | yes | | |
 | body_ar | text | no | | age-appropriate wording for students (MSG-03) |
 | body_en | text | yes | | |
-| sent_by | uuid | no | users.id | academy staff with the bulk-message permission only (MSG-03, NOT-08) |
+| sent_by | uuid | no | users.id | academy staff with the bulk-message permission only (MSG-03, NOT-08); teachers never hold it for `audience = students` (no teacher→child channel, SAFE-03; RBAC test in WP-1.3) |
 | published_at | timestamptz | yes | | |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
@@ -157,7 +157,7 @@ Constraints and indexes:
 | recipient_type | string | no | | values: user\|student |
 | recipient_id | uuid | no | | polymorphic |
 | channel | string | no | | values: email\|sms\|in_app |
-| recipient_masked | string | yes | | masked address, e.g. `a***@g***.com` (SEC-12) |
+| recipient_masked | string | yes | | PII (partly); masked address, e.g. `a***@g***.com` (SEC-12) |
 | status | string | no | | values: queued\|deferred\|sent\|delivered\|bounced\|failed (NOT-09) |
 | attempt_no | smallint | no | | retries (NOT-09) |
 | deferred_until_at | timestamptz | yes | | 08:00 in the recipient's zone during quiet hours (D-10) |
@@ -197,7 +197,7 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | channel | string | no | | values: email\|sms |
 | address_hash | string | no | | hashed address; the address itself is not stored |
-| reason | string | no | | values: bounce\|complaint\|manual |
+| reason | string | no | | no-PII: fixed values; values: bounce\|complaint\|manual |
 | user_id | uuid | yes | users.id | |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |

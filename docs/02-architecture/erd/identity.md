@@ -117,7 +117,7 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | user_id | uuid | no | users.id | |
 | session_key_hash | string | no | | hashed Redis session id, used to revoke it |
-| device_label | string | yes | | derived from the user agent, e.g. "Chrome · Windows" |
+| device_label | string | yes | | no-PII: derived from the user agent, e.g. "Chrome · Windows" |
 | ip | inet | yes | | PII; last seen address |
 | user_agent | text | yes | | PII |
 | last_active_at | timestamptz | no | | staff idle limit 30 min (SEC-03) |
@@ -135,7 +135,7 @@ Constraints and indexes:
 | --- | --- | --- | --- | --- |
 | id | uuid | no | | PK (v7) |
 | student_id | uuid | no | students.id | |
-| pin_hash | string | no | | hashed; 4–6 digits (SEC-04) |
+| pin_hash | string | no | | hashed with Argon2id plus a server-side pepper, so a leaked table cannot be brute-forced offline; 4–6 digits (SEC-04) |
 | failed_attempts | smallint | no | | reset on success |
 | locked_until_at | timestamptz | yes | | `security.child_pin_attempts` / `lock_min` (5 / 15) |
 | set_by | uuid | no | users.id | guardian who set the PIN |
@@ -153,7 +153,7 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | family_id | uuid | no | families.id | a device is authorized for the family; siblings pick their profile, then enter their PIN |
 | device_key_hash | string | no | | hashed device secret kept in a first-party cookie |
-| device_label | string | yes | | guardian-chosen name, e.g. "تابلت البيت" |
+| device_label | string | yes | | PII; guardian-chosen name, e.g. "تابلت البيت" |
 | authorized_by | uuid | no | users.id | guardian |
 | last_used_at | timestamptz | yes | | |
 | revoked_at | timestamptz | yes | | |

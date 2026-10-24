@@ -107,36 +107,16 @@ Each is a storage consequence of stated text, not a new business rule. Each appe
 - **Child fields are exactly PRV-04 + ONB-03**: `students.first_name`, `birth_month`, `birth_year`; `student_profiles.primary_language`, `arabic_level_estimate`, self-assessment answers, `notes` (ONB-04 free text). No photo, email or address column anywhere for a child. `students.departed_at` anchors the "after the student leaves" retention clocks (F17:45-46); when it is set is decided in WP-5.2.
 - **Time:** user display zone `users.timezone` (IANA) and `users.locale`; family market `families.country_code` (ONB-01 country, D-17, BIL-12 refund market). Teacher availability: weekday + local time + `ref_timezone` (`Asia/Amman`). Student availability: see D-37.
 - **Audit:** `audit_logs` (append-only) holds actor id, action, entity, non-personal before/after values and `occurred_at`. IP, user agent and before/after values of registry columns go to `audit_log_personal_data` (1:1, erasable by `sura_retention`). This keeps SEC-11 (values and address are recorded) and D-14 (audit keeps the actor id only once personal data is erased).
-- **Append-only tables that hold personal data** (`consents.ip/user_agent`, `participant_events`, `delivery_logs`) are deleted only by the retention role at the end of their period (`session_chat_messages` is mutable but follows the same 12-month D-15 clock); a deletion request does not shorten a legal-evidence period (consents: D-15). Recipients in `delivery_logs` are stored masked (SEC-12), with `notifiable_id` for lookups.
+- **Append-only tables that hold personal data** (`consents.ip/user_agent`, `participant_events`, `delivery_logs`, `session_chat_messages`, `cookie_consents`, `audit_log_personal_data`) reject UPDATE always and allow DELETE only for `sura_retention` (trigger `forbid_mutation_except_retention`, data-model-conventions.md); the ledger, wallet, subscription events and version tables reject DELETE for every role. A deletion request does not shorten a legal-evidence period (consents: D-15). Recipients in `delivery_logs` are stored masked (SEC-12), with `recipient_id` for lookups. Append-only tables carry `reason_code`; free text lives in the erasable `record_notes` (privacy review).
 - **Sessions:** status per state-machines.md (`scheduled`, `in_progress`, `completed`, `cancelled`, `postponed`) plus `outcome`; a postponement or compensation creates a new row with `replaces_session_id`. `class_sessions.lesson_id` records curriculum progress (TCH-06); `teacher_notes` holds CLS-11 notes (registry: free text). `actual_started_at` serves the 5-minute late alert (05:31).
-- **Ledger unique key:** constitution Art. 5 §2 says the unique key `(student_id, session_id, type)` applies to "قيود الحصص". Planned index: `UNIQUE (student_id, session_id, type) WHERE type IN ('CONSUMPTION_ATTENDANCE','ABSENCE_UNEXCUSED','EXTENSION_ABSENCE_EXCUSED','COMPENSATION_ACADEMY')`, plus `UNIQUE (reverses_entry_id)` (an entry is reversed at most once) and `UNIQUE (idempotency_key)`. A REVERSAL carries the original's `session_id` but is outside the key, so two corrections in one session are possible. If a post-lock edit must re-post a session type that was already reversed in that session (A→B→A), WP-2.3 posts it as `ADJUSTMENT_MANUAL` with `session_id` and reason (ATT-05 already needs permission and reason). The ledger-auditor reviews this.
+- **Ledger unique key:** constitution Art. 5 §2 says the unique key `(student_id, session_id, type)` applies to "قيود الحصص". Index: `UNIQUE (student_id, session_id, type) WHERE type IN ('CONSUMPTION_ATTENDANCE','ABSENCE_UNEXCUSED','EXTENSION_ABSENCE_EXCUSED','COMPENSATION_ACADEMY')`, plus `UNIQUE (reverses_entry_id)` (an entry is reversed at most once) and `UNIQUE (idempotency_key)` with deterministic key formats. A REVERSAL carries the original's `session_id` but is outside the key. A post-lock edit that must reinstate an entry already reversed (A→B→A) posts a REVERSAL of that reversal (changed after the ledger-auditor review: the earlier `ADJUSTMENT_MANUAL` path escaped every uniqueness guard). Entries post once, at attendance lock; `session_attendance.ledger_entry_id` points to the current effective entry and changes under a row lock. Recorded in ADR-007 §6 as the WP-0.7 reading.
 - **Invoices:** `invoices.number` unique and sequential (BIL-11); the series format is WP-2.4's. Issuer and customer details are frozen in `issuer_snapshot` / `customer_snapshot` jsonb (allowed: snapshots).
 - **Webhooks:** payment and video provider events land in `webhook_calls` (Platform, spatie), unique per provider event id, then feed `payments` / `participant_events`.
 - **Enumerations the spec does not give** (lead stages, safeguarding incident status, support thread status, …) are written `TBD(WP-x.y)` with the WP that builds the feature, never invented; mechanical lifecycles (request → approved/rejected) are proposed and marked "proposed".
 - **Money in settings:** the spec keys `teacher.*_jod` keep their names; their values are stored as `{amount_minor, currency}` (35 JOD = 35000 fils), never as decimals.
 
 ### 3.4 Personal-data registry (design of `config/privacy.php`)
-`pii-registry.md` lists every registered column: `table.column` · subject (guardian, child, teacher, applicant, visitor, free text, file) · erasure action (`erase`, `pseudonymize`, `delete_row`, `delete_file`, `retain_until_period`) · retention (source: F17 table, D-15) · requirement. Planned PHP shape for WP-1.5:
-
-```php
-return [
-    'subjects' => [
-        'guardian' => [
-            'users' => ['name' => 'pseudonymize', 'email' => 'pseudonymize', 'phone_e164' => 'erase'],
-            'audit_log_personal_data' => ['*' => 'delete_row'],
-        ],
-        'child' => [
-            'students' => ['first_name' => 'pseudonymize', 'first_name_normalized' => 'erase'],
-            'student_profiles' => ['notes' => 'erase'],
-            'submission_files' => ['file_id' => 'delete_file'],
-        ],
-    ],
-    'retention' => [
-        'participant_events' => ['months' => 12, 'action' => 'delete_row', 'source' => 'D-15'],
-        'recordings' => ['days_family' => 30, 'days_admin' => 90, 'action' => 'delete_file', 'source' => 'F17:44'],
-    ],
-];
-```
+`pii-registry.md` lists every registered column: `table.column` · subject · **Locate by** (the `table.column` path to the subject's id, or the retention clock for rows not linkable to a person) · erasure action (`erase`, `pseudonymize`, `delete_row`, `delete_file`, `retain_until_period`) · retention (F17 table, D-15, or "proposed") · source. The single config shape for WP-1.5 is the one in `pii-registry.md` (`erasure` → table → locate + columns; `retention` → table → clock + period; `honour_legal_holds`). The checker enforces tags, locate paths and that every free-text column is tagged or justified with `no-PII:`.
 
 ### 3.5 Migration order
 Layered by dependency, then topologically inside each layer (the checker proves every FK target comes first): Platform core (settings, versions, files, audit, outbox) → Identity (users, package tables) → Families → Teachers core (`teachers`, `teacher_levels`, needed by RBAC scope and scheduling before WP-2.6) → Curriculum → Scheduling → Live → Billing core (plans … subscriptions, payments) → Ledger → Billing wallet (`wallet_entries`, which references the ledger) → Learning → Messaging → remaining Teachers (compensation). The three default Laravel migrations (`users` with a bigint id, `cache`, `jobs`) are replaced in WP-1.1 by uuid-based versions; that WP owns the change.
@@ -161,6 +141,8 @@ None in the product. The owner reviews the diagrams on an Arabic artifact page (
 
 ## 8. Risks & open questions
 - **D-37 (Approved 2026-10-24, option a):** ONB-13 says student availability is "stored in UTC"; a weekly window stored in UTC moves by an hour for the family at every DST change (constitution Art. 6). Recommended: store weekday + local time + the family's IANA zone, like class patterns. Blocks only the `student_availability` columns; the rest can proceed.
+- **D-38 (Open):** legal hold for safeguarding evidence vs ordinary retention; `legal_holds` is modelled, policy pending.
+- **D-39 (Open):** marketing-message consent (CASL); no purpose added.
 - Owner approval of the diagrams at the end (acceptance criterion 1) is recorded in `status.md` «اعتمادات صاحب المشروع».
 - Spec ambiguities that do not change columns (dunning day origin, 14 vs 21 DST notice days, PAY-04 amount, report sampling vs states, settings keys missing for stated numbers) are listed in notes.md with the WP that must resolve them; they are not decided here.
 - Size: ≈ 110 tables in 11 files. Mitigation: generated diagrams and the checker; one module per task.

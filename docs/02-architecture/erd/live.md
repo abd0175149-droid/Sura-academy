@@ -2,7 +2,9 @@
 
 الفصل الافتراضي: غرفة لكل جلسة لدى مزود الفيديو (LiveKit خلف `VideoProvider`، ADR-005)، ورموز الدخول القصيرة، وأحداث المشاركين التي يُقترح منها الحضور (CLS-09)، والتسجيلات وسجل الوصول إليها (SEC-10)، ودردشة الحصة العامة (CLS-07).
 
-المشارك إما مستخدم بالغ (`users`) أو طالب (`students`)، ولذلك أعمدة المشارك مورفية. لا يُرسل للمزود اسم الطفل الكامل ولا أي بيانات اتصال.
+المشارك إما مستخدم بالغ (`users`) أو طالب (`students`)، ولذلك أعمدة المشارك مورفية. هوية المشارك لدى المزود معرّفه المعتم (uuid)، واسمه الظاهر هو الاسم الأول فقط. لا تُرسل له بيانات اتصال. أما عنوان IP فيصل إلى المزود حتماً، وهذا من موضوع القرار D-35.
+
+حذف بيانات طفل بطلب (D-14، D-11) يحذف تسجيلات الجلسات التي حضرها ضمن مدة الاحتفاظ، ويجدها عبر `session_attendance`.
 
 <!-- erd:diagram:start -->
 ```mermaid
@@ -60,8 +62,8 @@ erDiagram
 | opens_at | timestamptz | no | | starts_at − `session.join_window_before_min` (CLS-02) |
 | closes_at | timestamptz | no | | ends_at + `session.room_close_after_end_min` (05:34) |
 | chat_enabled | boolean | no | | host control (CLS-07) |
-| fallback_url | string | yes | | external link when embedding fails (CLS-15) |
-| fallback_reason | text | yes | | |
+| fallback_url | string | yes | | link when embedding fails (CLS-15); allow-listed to our own video project and domain, opened in child mode through an in-app route only |
+| fallback_reason | text | yes | | PII |
 | fallback_created_by | uuid | yes | users.id | |
 | fallback_created_at | timestamptz | yes | | |
 | created_at | timestamptz | no | | |
@@ -117,7 +119,9 @@ Constraints and indexes:
 | session_id | uuid | no | class_sessions.id | |
 | provider_recording_ref | string | no | | |
 | file_id | uuid | yes | files.id | private copy in our storage (D-16) |
-| storage_region | string | no | | `eu-central-1` (D-16) |
+| storage_region | string | no | | values: eu-central-1 (D-16) |
+| copied_at | timestamptz | yes | | copy into our storage; D-16 requires it within 1 hour of availability |
+| consent_snapshot | jsonb | no | | no-PII: ids only, `{student_id: consent_id}` for every student present when recording started (D-11 evidence) |
 | status | string | no | | values: processing\|available\|deleted (proposed) |
 | started_at | timestamptz | no | | only when every present student has a valid recording consent (D-11) |
 | ended_at | timestamptz | yes | | |
@@ -144,15 +148,17 @@ Constraints and indexes:
 | viewer_id | uuid | no | | polymorphic |
 | purpose | string | no | | values: family_view\|student_view\|supervisor_review\|admin |
 | safeguarding_incident_id | uuid | yes | safeguarding_incidents.id | supervisor access only on a report (SAFE-05) |
+| access_reason_code | string | yes | | values: retention_check\|legal_request\|technical_support (proposed; required for `admin`) |
 | signed_url_expires_at | timestamptz | no | | |
 | accessed_at | timestamptz | no | | |
 | created_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `INDEX (recording_id, accessed_at)`, `CHECK (purpose <> 'supervisor_review' OR safeguarding_incident_id IS NOT NULL)`
+- `INDEX (recording_id, accessed_at)`, `CHECK (purpose <> 'supervisor_review' OR safeguarding_incident_id IS NOT NULL)`, `CHECK (purpose <> 'admin' OR access_reason_code IS NOT NULL)`
+- Kept for the audit period (2 years, F17:50).
 
 ### `session_chat_messages`
-- Kind: mutable · Spec: NEW (CLS-07 «عامة فقط … ومحفوظة في السجل»; spec/14 `messages` belongs to support) · Reqs: CLS-07, SAFE-03 · Scope: via session → class
+- Kind: append-only · Spec: NEW (CLS-07 «عامة فقط … ومحفوظة في السجل»; spec/14 `messages` belongs to support) · Reqs: CLS-07, SAFE-03 · Scope: via session → class
 
 | Column | Type | Null | References | Notes |
 | --- | --- | --- | --- | --- |
@@ -163,7 +169,6 @@ Constraints and indexes:
 | body | text | no | | PII |
 | sent_at | timestamptz | no | | |
 | created_at | timestamptz | no | | |
-| updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `INDEX (session_id, sent_at)`; public to the room only, no private messages (SAFE-03); kept 12 months (D-15).
+- `INDEX (session_id, sent_at)`; public to the room only, no private messages (SAFE-03); never edited, so the log stays a true record; deleted after 12 months by `sura_retention` (D-15).

@@ -5,7 +5,7 @@ declare(strict_types=1);
  * The ERD documents in docs/02-architecture/erd/ agree with spec/14 (every spec table is mapped), with
  * data-model-conventions.md (types, names, append-only list) and with traceability.md (every R1 requirement
  * is covered); the migration order is FK-safe; the PII registry matches the PII tags; the Mermaid diagrams are
- * generated from the column tables. Self-test: scripts/test-erd.php.
+ * generated from the column tables; free-text columns are tagged PII or justified. Self-test: scripts/test-erd.php.
  *   php scripts/check-erd.php            check
  *   php scripts/check-erd.php --write    regenerate the Mermaid blocks, then check
  *   --root <dir>   check another tree instead of this repository (used by scripts/test-erd.php)
@@ -37,6 +37,7 @@ const DISPOSITIONS = ['same', 'renamed', 'merged', 'package', 'deferred'];
 const PII_ACTIONS = ['erase', 'pseudonymize', 'delete_row', 'delete_file', 'retain_until_period'];
 const TYPES = '/^(uuid|string|text|smallint|integer|bigint|boolean|timestamptz|date|time|jsonb|inet|char\(\d+\))$/';
 const REQ_ID = '/^[A-Z]{2,5}-\d{2,3}$/';
+const FREE_TEXT = '/^(reason|note|notes|details|comment|body|description|label)$|_(reason|note|notes|details|comment|label|text|body)$/';
 
 $errors = [];
 
@@ -299,6 +300,11 @@ foreach ($tables as $t => $info) {
                 $errors[] = "{$t}.{$name}: polymorphic id needs ".substr($name, 0, -3).'_type';
             }
         }
+        // E8: free text can always carry a child's name or health detail, so it is personal unless stated otherwise.
+        if (in_array($type, ['text', 'string', 'jsonb'], true) && preg_match(FREE_TEXT, $name)
+            && !preg_match('/\bPII\b|no-PII:/', $c['notes'])) {
+            $errors[] = "{$t}.{$name}: free text must be tagged PII or say no-PII: <why>";
+        }
         if ((in_array($name, ['status', 'kind', 'type'], true) || str_ends_with($name, '_status'))
             && !preg_match('/values:|TBD\(WP-\d+\.\d+\)/', $c['notes'])) {
             $errors[] = "{$t}.{$name}: list values (values: a|b) or TBD(WP-x.y)";
@@ -478,22 +484,32 @@ foreach (rows(read($root, ERD_DIR.'/pii-registry.md', $errors)) as $c) {
     }
     $key = "{$m[1]}.{$m[2]}";
     $registry[$key] = true;
-    if (count($c) !== 5) {
-        $errors[] = "pii-registry.md: cannot read row {$key} (".count($c).' cells; registry rows have 5)';
+    if (count($c) !== 6) {
+        $errors[] = "pii-registry.md: cannot read row {$key} (".count($c).' cells; registry rows have 6)';
         continue;
     }
-    if (!in_array($c[2], PII_ACTIONS, true)) {
-        $errors[] = "pii-registry.md {$key}: unknown action {$c[2]}";
+    // Locate by: how the erasure job finds a subject's rows (a table.column path to the subject id).
+    preg_match_all('/`([a-z0-9_]+)\.([a-z0-9_]+)`/', $c[2], $loc, PREG_SET_ORDER);
+    if ($loc === []) {
+        $errors[] = "pii-registry.md {$key}: Locate by names no table.column";
+    }
+    foreach ($loc as [, $lt, $lc]) {
+        if (!has_col($tables, $lt, $lc)) {
+            $errors[] = "pii-registry.md {$key}: Locate by cites {$lt}.{$lc}, which is not in the module files";
+        }
+    }
+    if (!in_array($c[3], PII_ACTIONS, true)) {
+        $errors[] = "pii-registry.md {$key}: unknown action {$c[3]}";
     }
     if (!has_col($tables, $m[1], $m[2])) {
         $errors[] = "pii-registry.md names {$key}, which is not in the module files";
-    } elseif (!preg_match('/\bPII\b/', $tables[$m[1]]['cols'][$m[2]]['notes'])) {
+    } elseif (!preg_match('/(?<!no-)\bPII\b/', $tables[$m[1]]['cols'][$m[2]]['notes'])) {
         $errors[] = "pii-registry.md names {$key}, which is not tagged PII in its module file";
     }
 }
 foreach ($tables as $t => $info) {
     foreach ($info['cols'] as $name => $c) {
-        if (preg_match('/\bPII\b/', $c['notes']) && !isset($registry["{$t}.{$name}"])) {
+        if (preg_match('/(?<!no-)\bPII\b/', $c['notes']) && !isset($registry["{$t}.{$name}"])) {
             $errors[] = "{$t}.{$name} is tagged PII but is not in pii-registry.md";
         }
     }

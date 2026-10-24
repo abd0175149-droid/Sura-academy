@@ -197,7 +197,7 @@ Constraints and indexes:
 | report_id | uuid | no | reports.id | |
 | reviewer_id | uuid | no | users.id | academic supervisor |
 | decision | string | no | | values: approved\|returned (RPT-05 «إعادة للتعديل بتعليق») |
-| comment | text | yes | | |
+| comment | text | yes | | PII |
 | decided_at | timestamptz | no | | |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |

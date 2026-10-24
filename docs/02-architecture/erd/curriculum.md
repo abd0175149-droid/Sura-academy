@@ -296,7 +296,7 @@ Constraints and indexes:
 | audience | string | no | | values: student\|teacher\|guardian\|public (CNT-03; teacher-only resources such as slides, answer keys and guides use `teacher`, CNT-05) |
 | title_ar | string | no | | |
 | title_en | string | yes | | |
-| body | text | yes | | vocalized text page, stored verbatim (diacritics never stripped) |
+| body | text | yes | | no-PII: published curriculum text; vocalized text page, stored verbatim (diacritics never stripped) |
 | media_asset_id | uuid | yes | media_assets.id | |
 | external_url | string | yes | | opened through the parental gate in child mode (ADR-009) |
 | variety | string | no | | values: msa (D-18) |

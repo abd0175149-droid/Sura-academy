@@ -34,6 +34,7 @@ erDiagram
     uuid plan_id FK
     uuid price_id FK
     uuid payment_method_id FK
+    uuid pending_renewal_payment_id FK
   }
   payments {
     uuid id PK
@@ -74,6 +75,9 @@ erDiagram
     uuid discount_rule_id FK
     uuid coupon_id FK
   }
+  invoice_number_series {
+    uuid id PK
+  }
   refunds {
     uuid id PK
     uuid payment_id FK
@@ -90,6 +94,8 @@ erDiagram
     uuid payment_id FK
     uuid refund_id FK
     uuid reverses_entry_id FK
+    uuid credit_entry_id FK
+    uuid rule_version_id FK
     uuid actor_id FK
   }
   plans ||--o{ prices : "plan_id"
@@ -100,6 +106,7 @@ erDiagram
   plans ||--o{ subscriptions : "plan_id"
   prices ||--o{ subscriptions : "price_id"
   payment_methods |o--o{ subscriptions : "payment_method_id"
+  payments |o--o{ subscriptions : "pending_renewal_payment_id"
   families ||--o{ payments : "family_id"
   payment_methods |o--o{ payments : "payment_method_id"
   files |o--o{ payments : "transfer_proof_file_id"
@@ -132,6 +139,8 @@ erDiagram
   payments |o--o{ wallet_entries : "payment_id"
   refunds |o--o{ wallet_entries : "refund_id"
   wallet_entries |o--o{ wallet_entries : "reverses_entry_id"
+  wallet_entries |o--o{ wallet_entries : "credit_entry_id"
+  rule_versions ||--o{ wallet_entries : "rule_version_id"
   users |o--o{ wallet_entries : "actor_id"
 ```
 <!-- erd:diagram:end -->
@@ -184,7 +193,7 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | code | string | no | | |
 | kind | string | no | | values: family_sibling (BIL-03) |
-| percent_bps | integer | no | | from `billing.family_discount_pct` (12.5% = 1250) |
+| percent_bps | integer | no | | copied from `billing.family_discount_pct` (12.5% = 1250) when the rule row is created; a settings change creates a new rule row, so invoices keep the rate they used |
 | applies_from_child_index | smallint | no | | 2: second child onward (D-01) |
 | valid_from_at | timestamptz | no | | |
 | valid_to_at | timestamptz | yes | | |
@@ -265,7 +274,8 @@ Constraints and indexes:
 | suspended_at | timestamptz | yes | | S8 |
 | paused_until_at | timestamptz | yes | | spec `paused_until`; freeze per D-27 |
 | cancelled_at | timestamptz | yes | | |
-| cancel_reason | text | yes | | |
+| cancel_reason | text | yes | | PII |
+| pending_renewal_payment_id | uuid | yes | payments.id | renewal in flight (S5 guard «لا تجديد معلّق»); a second trigger finds it set and stops |
 | created_by | uuid | yes | users.id | |
 | updated_by | uuid | yes | users.id | |
 | created_at | timestamptz | no | | |
@@ -275,6 +285,7 @@ Constraints and indexes:
 - `UNIQUE (student_id) WHERE status IN ('pending_payment','active','grace','suspended','paused')`: one live subscription per child
 - `INDEX (family_id, status)`, `INDEX (status, grace_ends_at)`
 - Every status change writes `subscription_events` in the same transaction (spec/14).
+- Renewal keys are deterministic: `renewal:<subscription_id>:<cycle_no>:<attempt_no>`.
 
 ### `payments`
 - Kind: mutable · Spec: payments · Reqs: BIL-05, BIL-08, BIL-09, BIL-15, BIL-16, PAR-08, ADM-08 · Scope: family_id
@@ -295,6 +306,8 @@ Constraints and indexes:
 | payment_method_id | uuid | yes | payment_methods.id | |
 | three_ds_result | string | yes | | BIL-05 |
 | failure_code | string | yes | | |
+| review_status | string | no | | values: none\|needs_review\|resolved (amount or currency mismatch, S2 guard «المبلغ = المتوقع»; a flag beside the state machine, not a state) |
+| review_reason_code | string | yes | | values: amount_mismatch\|currency_mismatch\|duplicate\|other |
 | transfer_proof_file_id | uuid | yes | files.id | manual transfer proof (BIL-09, PAR-08) |
 | reviewed_by | uuid | yes | users.id | finance approves a manual transfer (BIL-09, ADM-08) |
 | reviewed_at | timestamptz | yes | | |
@@ -336,14 +349,14 @@ Constraints and indexes:
 | to_status | string | yes | | values: draft\|pending_payment\|active\|grace\|suspended\|paused\|completed\|cancelled\|refunded; null when the status does not change (`RenewalToggled`) |
 | payment_id | uuid | yes | payments.id | |
 | metadata | jsonb | yes | | e.g. freeze length; D-27 limits are read from these rows |
-| reason | text | yes | | |
+| reason_code | string | yes | | TBD(WP-2.4); free text goes to `record_notes` |
 | actor_type | string | no | | values: user\|system |
 | actor_id | uuid | yes | users.id | |
 | occurred_at | timestamptz | no | | |
 | created_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `INDEX (subscription_id, occurred_at)`
+- `INDEX (subscription_id, occurred_at)`, `UNIQUE (subscription_id, payment_id, event) WHERE payment_id IS NOT NULL` (a duplicate `PaymentSucceeded` is rejected)
 
 ### `coupon_redemptions`
 - Kind: mutable · Spec: coupon_redemptions · Reqs: BIL-04 · Scope: family_id
@@ -370,7 +383,7 @@ Constraints and indexes:
 | --- | --- | --- | --- | --- |
 | id | uuid | no | | PK (v7) |
 | family_id | uuid | no | families.id | |
-| number | string | no | | sequential, never reused; the series format is WP-2.4's (BIL-11) |
+| number | string | no | | sequential and gap-free from `invoice_number_series`; never reused (BIL-11) |
 | kind | string | no | | values: invoice\|credit_note (refund credit note, state-machines.md S11) |
 | payment_id | uuid | yes | payments.id | |
 | currency | char(3) | no | | |
@@ -387,8 +400,9 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (number)`, `INDEX (family_id, issued_at)`
-- Immutable once issued (corrections are credit notes); kept per Jordanian accounting law in a restricted archive (F17:47).
+- `UNIQUE (number)`, `UNIQUE (payment_id) WHERE kind = 'invoice'`, `INDEX (family_id, issued_at)`
+- `CHECK (total_minor = subtotal_minor - discount_minor + tax_minor)`
+- Trigger: once `issued_at` is set, UPDATE may change only `pdf_ar_file_id`, `pdf_en_file_id` and `updated_at`; DELETE is rejected. The same trigger guards `invoice_lines` of an issued invoice. Corrections are credit notes; kept per Jordanian accounting law in a restricted archive (F17:47).
 
 ### `invoice_lines`
 - Kind: mutable · Spec: invoice_lines · Reqs: BIL-11, BIL-03, BIL-04 · Scope: family_id (via invoice)
@@ -412,7 +426,21 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `INDEX (invoice_id)`
+- `INDEX (invoice_id)`; the line currency equals the invoice currency (composite FK `(invoice_id, currency) → invoices (id, currency)`).
+
+### `invoice_number_series`
+- Kind: mutable · Spec: NEW (BIL-11 «ترقيم متسلسل»; PostgreSQL sequences leave gaps) · Reqs: BIL-11 · Scope: none (finance)
+
+| Column | Type | Null | References | Notes |
+| --- | --- | --- | --- | --- |
+| id | uuid | no | | PK (v7) |
+| code | string | no | | series, e.g. `INV-2027`, `CN-2027`; format chosen in WP-2.4 |
+| next_number | bigint | no | | taken under `SELECT … FOR UPDATE` in the issuing transaction |
+| created_at | timestamptz | no | | |
+| updated_at | timestamptz | no | | |
+
+Constraints and indexes:
+- `UNIQUE (code)`
 
 ### `refunds`
 - Kind: mutable · Spec: refunds · Reqs: BIL-12, PAR-09, ADM-08 · Scope: family_id
@@ -441,7 +469,8 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (idempotency_key)`, `UNIQUE (provider_ref) WHERE provider_ref IS NOT NULL`, `INDEX (status)`
+- `UNIQUE (idempotency_key)`, `UNIQUE (payment_id, provider_ref) WHERE provider_ref IS NOT NULL` (the provider is the payment's), `UNIQUE (credit_note_invoice_id) WHERE credit_note_invoice_id IS NOT NULL`, `INDEX (status)`
+- Approving or executing a refund locks the `payments` row (`FOR UPDATE`) and checks that all refunds of the payment stay within `payments.amount_minor`.
 
 ### `wallet_entries`
 - Kind: append-only · Spec: wallet_entries · Reqs: BIL-13, BIL-12 · Scope: family_id
@@ -457,13 +486,16 @@ Constraints and indexes:
 | payment_id | uuid | yes | payments.id | wallet used on a payment |
 | refund_id | uuid | yes | refunds.id | academy-fault refund taken as wallet credit |
 | reverses_entry_id | uuid | yes | wallet_entries.id | |
+| credit_entry_id | uuid | yes | wallet_entries.id | for PAYMENT_USE and EXPIRY: the credit row being used or expired (FIFO by `expires_at`); one row per credit touched |
+| rule_version_id | uuid | no | rule_versions.id | `billing.wallet_freeze_months` and refund rules in force (Art. 5) |
 | expires_at | timestamptz | yes | | cancellation approval + `billing.wallet_freeze_months` (3) |
 | idempotency_key | string | no | | |
 | actor_type | string | no | | values: user\|system |
 | actor_id | uuid | yes | users.id | |
-| reason | text | yes | | |
+| reason_code | string | yes | | TBD(WP-2.4); free text goes to `record_notes` |
 | created_at | timestamptz | no | | |
 
 Constraints and indexes:
 - `UNIQUE (idempotency_key)`, `UNIQUE (reverses_entry_id)`, `UNIQUE (source_ledger_entry_id) WHERE source_ledger_entry_id IS NOT NULL`, `INDEX (family_id, created_at)`
 - Trigger `forbid_mutation`; corrections are `REVERSAL` rows.
+- Remaining per credit = its amount + Σ linked `PAYMENT_USE`/`EXPIRY` rows; every write takes an advisory lock on (`family_id`, `currency`) so concurrent uses cannot overdraw.

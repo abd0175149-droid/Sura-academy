@@ -44,13 +44,17 @@
 
 ## جداول الإضافة فقط
 
-`credit_ledger_entries`، `audit_logs`، `wallet_entries`، `subscription_events`، `enrollment_history`، `consents`، `setting_versions`، `rule_versions`، `participant_events`، `delivery_logs`، `join_token_log`، `recording_access_log`، `safeguarding_incident_actions`.
+`credit_ledger_entries`، `audit_logs`، `wallet_entries`، `subscription_events`، `enrollment_history`، `consents`، `setting_versions`، `rule_versions`، `participant_events`، `delivery_logs`، `join_token_log`، `recording_access_log`، `safeguarding_incident_actions`، `credit_lot_extensions`، `session_chat_messages`، `cookie_consents`، `audit_log_personal_data`.
 
-أُضيفت الثلاثة الأخيرة في WP-0.7، وكلها سجلات وصول أو خطوات (SEC-10، SAFE-02).
+أُضيفت السبعة الأخيرة في WP-0.7: سجلات وصول وخطوات (SEC-10، SAFE-02)، وتمديدات دفعات الرصيد (D-05)، ودردشة الحصة، واختيارات ملفات الارتباط، والجزء الشخصي من التدقيق.
 
 لكل منها:
 1. بلا `updated_at`.
-2. محفّز في PostgreSQL يرفض التعديل والحذف:
+2. محفّز في PostgreSQL يرفض التعديل دائماً. الحذف نوعان (WP-0.7):
+   - **مطلق** (`forbid_mutation`): لا حذف لأي دور. الجداول: `credit_ledger_entries`، `wallet_entries`، `subscription_events`، `enrollment_history`، `setting_versions`، `rule_versions`، `credit_lot_extensions`، `safeguarding_incident_actions`.
+   - **حذف الاحتفاظ فقط** (`forbid_mutation_except_retention`): يُسمح بالحذف حين `current_user = 'sura_retention'` فقط، عبر دالة حذف لكل جدول لا تحذف إلا ما انقضت مدته أو ما شمله طلب محو. الجداول: `audit_logs`، `audit_log_personal_data`، `consents`، `cookie_consents`، `participant_events`، `delivery_logs`، `join_token_log`، `recording_access_log`، `session_chat_messages`.
+
+   مثال الدالة المطلقة:
 
 ```sql
 CREATE OR REPLACE FUNCTION forbid_mutation() RETURNS trigger AS $$
@@ -70,7 +74,7 @@ CREATE TRIGGER credit_ledger_entries_append_only
 ## الفهارس والقيود
 
 - مفتاح أجنبي لكل علاقة مع `ON DELETE RESTRICT` افتراضاً.
-- قيد فريد `(student_id, session_id, type)` في `credit_ledger_entries` حيث `session_id` ليس فارغاً.
+- قيد فريد `(student_id, session_id, type)` في `credit_ledger_entries` لأنواع قيود الحصص الأربعة: `CONSUMPTION_ATTENDANCE`، `ABSENCE_UNEXCUSED`، `EXTENSION_ABSENCE_EXCUSED`، `COMPENSATION_ACADEMY` (الدستور م5 §2 «لقيود الحصص»). `REVERSAL` خارجه، ويحميه `UNIQUE (reverses_entry_id)`. وإعادة قيد سبق عكسه تكون بعكس قيد العكس (WP-0.7، `erd/ledger.md`).
 - قيد فريد `idempotency_key` في كل جدول يقبل عمليات مالية أو رصيدية.
 - `payments.provider_ref` فريد لكل مزود.
 - فهارس لأعمدة النطاق والحالة والزمن الأكثر استعلاماً.
@@ -83,6 +87,9 @@ CREATE TRIGGER credit_ledger_entries_append_only
 - كل هجرة تعمل على قاعدة فارغة ضمن الاختبارات.
 
 ## فصل البيانات الشخصية (D-14)
+
+كل عمود نص حر (اسمه `reason`، `note(s)`، `details`، `comment`، `body`، `description`، `label` أو ينتهي بها) يُعامل بيانات شخصية: يُوسم `PII` ويُسجَّل، أو يذكر سبب عدم ذلك بـ `no-PII:`. والفاحص `scripts/check-erd.php` يفرضه. جداول الإضافة فقط تحمل `reason_code`، والنص الحر في `record_notes` القابل للمحو (WP-0.7).
+
 
 البيانات الشخصية القابلة للمحو في أعمدة أو جداول معروفة مسجلة في `config/privacy.php`: أسماء أولياء الأمور، البريد، الهاتف، الاسم الأول للطفل، الملاحظات الحرة، الملفات المرفوعة. طلب الحذف يستبدلها باسم مستعار أو يمحوها، ويُبقي الصفوف المالية والرصيدية بمعرّفاتها.
 
@@ -108,6 +115,10 @@ CREATE TRIGGER credit_ledger_entries_append_only
 | `teacher_levels` | Teachers | TOP-02، SCH-11: المستويات المؤهلة لها المعلمة (WP-0.7) |
 | `teacher_bank_accounts` | Teachers | TOP-02، SEC-08: البيانات البنكية مشفرة ومنفصلة (WP-0.7) |
 | `teacher_interviews` | Teachers | TOP-01: نموذج تقييم المقابلة (WP-0.7) |
+| `credit_lot_extensions` | Ledger | D-05: تمديد الدفعة بمدة التجميد صفاً لا تعديلاً (WP-0.7) |
+| `record_notes` | Platform | النص الحر لجداول الإضافة فقط، قابل للمحو (WP-0.7) |
+| `legal_holds` | Platform | D-38 (Open): تعليق الحذف لأدلة بلاغ حماية (WP-0.7) |
+| `invoice_number_series` | Billing | BIL-11: ترقيم متسلسل بلا فجوات (WP-0.7) |
 | `job_batches`, `failed_jobs`, `password_reset_tokens`, `personal_access_tokens`, `model_has_permissions` | Platform، Identity | جداول Laravel والحزم (WP-0.7) |
 
 المخطط الكامل لكل جدول في `docs/02-architecture/erd/` (WP-0.7)، و`php scripts/check-erd.php` يفحص اتساقه مع هذا الملف.

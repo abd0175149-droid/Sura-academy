@@ -16,7 +16,7 @@
 | ADM-06 | Y | `assessment_slots.status`, `assessments.status`, `assessment_scores.score`, `placements.status`, `trials.status` | conversion is derived |
 | ADM-07 | Y | `content_items.status`, `media_assets.licence_expires_on`, `lesson_plans.status` | |
 | ADM-08 | Y | `payments.reviewed_by`, `payments.transfer_proof_file_id`, `invoices.total_minor`, `refunds.status`, `wallet_entries.amount_minor`, `audit_logs.action` | exports are logged as `export.*` audit actions |
-| ADM-09 | Y | `credit_ledger_entries.type`, `credit_ledger_entries.reason`, `attendance_exceptions.kind` | manual entries carry a reason |
+| ADM-09 | Y | `credit_ledger_entries.type`, `credit_ledger_entries.reason_code`, `record_notes.body`, `attendance_exceptions.kind` | manual entries carry a reason |
 | ADM-10 | Y | `reports.selected_for_review`, `report_reviews.decision`, `report_reviews.comment` | |
 | ADM-11 | Y | `message_templates.key`, `message_template_versions.body_ar`, `announcements.target_type`, `delivery_logs.status` | |
 | ADM-12 | Y | `settings.value`, `setting_versions.version_no`, `setting_versions.changed_by`, `setting_versions.effective_at` | |
@@ -30,10 +30,10 @@
 | ATT-02 | Y | `absence_requests.requested_at`, `absence_requests.within_cutoff`, `class_sessions.starts_at` | compared in UTC |
 | ATT-03 | Y | `absence_requests.within_cap`, `session_attendance.status` | D-06 sliding window of 8 |
 | ATT-04 | Y | `credit_ledger_entries.rule_version_id`, `rule_versions.snapshot` | |
-| ATT-05 | Y | `session_attendance.locked_at`, `credit_ledger_entries.reverses_entry_id`, `credit_ledger_entries.reason`, `audit_logs.reason` | |
+| ATT-05 | Y | `session_attendance.locked_at`, `session_attendance.ledger_entry_id`, `credit_ledger_entries.reverses_entry_id`, `credit_ledger_entries.reason_code`, `record_notes.body` | |
 | ATT-06 | Y | `attendance_exceptions.kind`, `attendance_exceptions.status` | |
 | ATT-07 | Y | `credit_ledger_entries.qty`, `credit_ledger_entries.pool`, `credit_balance_snapshots.balance` | balance = ledger sum |
-| ATT-08 | Y | `class_sessions.end_processed_at`, `credit_ledger_entries.idempotency_key`, `outbox_events.id` | plus the session-entry unique key |
+| ATT-08 | Y | `class_sessions.ledger_processed_at`, `credit_ledger_entries.idempotency_key`, `outbox_events.id` | plus the session-entry unique key |
 | ATT-09 | Y | `class_enrollments.kind`, `credit_ledger_entries.pool`, `compensation_lines.paid_student_count` | D-08: trial is a seat, not a session |
 | BIL-01 | Y | `plans.sessions_per_cycle`, `plans.cycle_weeks`, `subscriptions.student_id` | one student per subscription (D-01) |
 | BIL-02 | Y | `prices.amount_minor`, `prices.currency`, `prices.valid_from_at`, `prices.valid_to_at`, `subscriptions.price_id` | |
@@ -48,7 +48,7 @@
 | BIL-11 | Y | `invoices.number`, `invoices.issuer_snapshot`, `invoice_lines.amount_minor`, `invoices.pdf_ar_file_id`, `invoices.pdf_en_file_id` | |
 | BIL-12 | Y | `refunds.kind`, `refunds.channel`, `refunds.reason_code`, `refunds.market`, `refunds.status` | |
 | BIL-13 | Y | `wallet_entries.amount_minor`, `wallet_entries.currency`, `wallet_entries.expires_at`, `wallet_entries.source_ledger_entry_id` | D-28 |
-| BIL-14 | Y | `subscriptions.cancelled_at`, `subscriptions.paused_until_at`, `subscription_events.event` | D-27 freeze through operations |
+| BIL-14 | Y | `subscriptions.cancelled_at`, `subscriptions.paused_until_at`, `subscription_events.event`, `credit_lot_extensions.resumed_at` | D-27 freeze through operations |
 | BIL-15 | Y | `payments.provider`, `payment_methods.provider` | interface; `fake` until WP-2.5 (D-36) |
 | BIL-16 | Y | `webhook_calls.payload`, `webhook_calls.event_ref`, `webhook_calls.processed_at`, `webhook_calls.attempts` | |
 | CLS-01 | Y | `live_rooms.provider`, `live_rooms.provider_room_ref` | |
@@ -124,7 +124,7 @@
 | PAY-02 | Y | `compensation_rules.base_minor`, `compensation_rules.per_student_minor`, `compensation_lines.paid_student_count` | D-03 |
 | PAY-03 | Y | `compensation_lines.kind`, `compensation_lines.rule_version_id` | night premium line from settings |
 | PAY-04 | Y | `compensation_lines.kind` | `urgent_cover`; amount rule open for WP-2.6 |
-| PAY-05 | Y | `compensation_lines.reason`, `compensation_lines.approved_by`, `audit_logs.reason` | |
+| PAY-05 | Y | `compensation_lines.reason`, `compensation_lines.approved_by`, `audit_logs.action` | |
 | PAY-06 | Y | `compensation_statements.status`, `compensation_statements.period_month_on`, `payouts.export_file_id`, `payouts.payment_ref` | D-04 |
 | PAY-07 | Y | `compensation_rules.scope_type`, `compensation_rules.teacher_id`, `compensation_rules.class_id`, `compensation_rules.reason` | |
 | PRV-01 | Y | `legal_documents.document_type`, `consents.legal_document_version_id` | children's privacy notice |
@@ -150,7 +150,7 @@
 | RBAC-01 | Y | `permissions.name`, `role_has_permissions.role_id`, `model_has_roles.model_id` | |
 | RBAC-02 | Y | `guardians.family_id`, `classes.teacher_id`, `class_enrollments.student_id` | scope columns on every scoped table |
 | RBAC-03 | N | — | UI/server parity enforced by tests |
-| RBAC-04 | Y | `audit_logs.reason`, `credit_ledger_entries.reason` | |
+| RBAC-04 | Y | `audit_logs.reason_code`, `record_notes.body`, `credit_ledger_entries.reason_code` | written reason in `record_notes` |
 | RBAC-05 | Y | `model_has_roles.role_id`, `users.status`, `audit_logs.action` | review recorded as audit actions |
 | RPT-01 | Y | `report_items.item_key`, `report_items.score`, `report_items.body` | |
 | RPT-02 | Y | `reports.kind`, `reports.student_id` | class summary has no student |
@@ -163,7 +163,7 @@
 | SAFE-03 | Y | `session_chat_messages.session_id`, `support_threads.family_id` | no private adult–child table exists |
 | SAFE-04 | Y | `teacher_documents.document_type`, `training_completions.training_id`, `consents.purpose`, `teachers.activated_at` | |
 | SAFE-05 | Y | `observations.kind`, `recording_access_log.purpose`, `recording_access_log.safeguarding_incident_id` | |
-| SAFE-06 | Y | `teachers.suspended_at`, `teachers.status` | |
+| SAFE-06 | Y | `teachers.suspended_at`, `teachers.status`, `safeguarding_incidents.subject_teacher_id` | |
 | SCH-01 | Y | `classes.level_id`, `classes.age_min`, `classes.capacity`, `classes.capacity_override_reason`, `classes.teacher_id`, `class_schedule_rules.local_start`, `class_schedule_rules.ref_timezone` | |
 | SCH-02 | Y | `classes.status` | |
 | SCH-03 | Y | `classes.published_at`, `classes.capacity`, `class_enrollments.status` | |
@@ -206,7 +206,7 @@
 | STU-11 | N | — | usability for young children is UI |
 | TCH-01 | Y | `class_sessions.starts_at`, `reports.due_at`, `feedback.status` | reads only, shown in Amman time |
 | TCH-02 | Y | `class_sessions.status` | |
-| TCH-03 | Y | `students.first_name`, `placements.level_id`, `session_attendance.status` | first name only |
+| TCH-03 | Y | `students.first_name`, `placements.level_id`, `session_attendance.status`, `reports.status` | teachers see first name, level, attendance and their own reports; never birth month/year, profile answers or guardian notes |
 | TCH-04 | Y | `class_sessions.teacher_notes`, `lesson_plans.activities` | |
 | TCH-05 | Y | `session_attendance.confirmed_at`, `session_attendance.locked_at` | |
 | TCH-06 | Y | `class_sessions.lesson_id` | |
@@ -219,4 +219,4 @@
 | TOP-01 | Y | `teacher_applications.status`, `teacher_interviews.scores`, `teacher_documents.document_type`, `training_completions.completed_at`, `observations.outcome`, `teachers.activated_at` | records in R1; full workflow R2 |
 | TOP-02 | Y | `teachers.languages`, `teachers.qualifications`, `teacher_levels.level_id`, `teachers.max_classes`, `teacher_bank_accounts.iban`, `teacher_documents.expires_on` | |
 | TOP-03 | Y | `consents.purpose`, `legal_documents.document_type` | contract, code of conduct, child-protection policy with versions |
-| TOP-05 | Y | `teachers.suspended_at`, `teachers.terminated_at`, `teachers.status_reason` | |
+| TOP-05 | Y | `teachers.suspended_at`, `teachers.terminated_at`, `teachers.status_reason_code` | |

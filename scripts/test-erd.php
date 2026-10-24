@@ -120,8 +120,8 @@ function fixture(): array
             ."| discount_bps | integer | no | | |\n"
             ."| created_at | timestamptz | no | | |\n\n"
             ."Constraints and indexes:\n- `UNIQUE (student_id, session_id, type)`\n",
-        PII => "# PII registry\n\n| Column | Subject | Action | Retention | Source |\n| --- | --- | --- | --- | --- |\n"
-            ."| `users.email` | guardian | pseudonymize | account life | D-14 |\n",
+        PII => "# PII registry\n\n| Column | Subject | Locate by | Action | Retention | Source |\n| --- | --- | --- | --- | --- | --- |\n"
+            ."| `users.email` | guardian | `users.id` | pseudonymize | account life | D-14 |\n",
         COVERAGE => "# R1 coverage\n\n| ID | Data | Columns | Note |\n| --- | --- | --- | --- |\n"
             ."| ALP-01 | Y | `users.email`, `users.status` | |\n"
             ."| ALP-02 | N | — | read-only dashboard |\n"
@@ -282,14 +282,25 @@ $cases = [
         'ALP-02: Data must be Y or N'],
 
     // E6 PII registry.
-    ['E6 pii column not registered', swap(PII, "| `users.email` | guardian | pseudonymize | account life | D-14 |\n", ''), [], 1,
+    ['E6 pii column not registered', swap(PII, "| `users.email` | guardian | `users.id` | pseudonymize | account life | D-14 |\n", ''), [], 1,
         'users.email is tagged PII but is not in pii-registry.md'],
     ['E6 registry column missing', swap(PII, '| `users.email` |', '| `users.mail` |'), [], 1,
         'pii-registry.md names users.mail, which is not in the module files'],
     ['E6 registry column not tagged', swap(IDENTITY, '| email | string | no | | PII |', '| email | string | no | | |'), [], 1,
         'pii-registry.md names users.email, which is not tagged PII in its module file'],
-    ['E6 unknown action', swap(PII, '| guardian | pseudonymize |', '| guardian | shred |'), [], 1,
+    ['E6 unknown action', swap(PII, '| `users.id` | pseudonymize |', '| `users.id` | shred |'), [], 1,
         'pii-registry.md users.email: unknown action shred'],
+
+    ['E6 registry row needs a locate path', swap(PII, '| guardian | `users.id` |', '| guardian | |'), [], 1,
+        'pii-registry.md users.email: Locate by names no table.column'],
+    ['E6 locate path must exist', swap(PII, '| guardian | `users.id` |', '| guardian | `users.uuid` |'), [], 1,
+        'pii-registry.md users.email: Locate by cites users.uuid, which is not in the module files'],
+
+    // E8 free text is personal data unless stated otherwise.
+    ['E8 free text needs PII or a no-PII reason', swap(LEDGER, "| held_on | date | yes | | |\n", "| held_on | date | yes | | |\n| cancel_note | text | yes | | |\n"), [], 1,
+        'class_sessions.cancel_note: free text must be tagged PII or say no-PII: <why>'],
+    ['E8 no-PII reason passes', swap(LEDGER, "| held_on | date | yes | | |\n", "| held_on | date | yes | | |\n| cancel_note | text | yes | | no-PII: chosen from a fixed list |\n"), [], 0,
+        'erd OK'],
 
     // E7 diagrams.
     ['E7 diagram stale', swap(LEDGER, '| teacher_id | uuid | no | users.id |', '| teacher_id | uuid | yes | users.id |'), [], 1,

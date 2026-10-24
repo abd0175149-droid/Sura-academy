@@ -23,6 +23,15 @@ erDiagram
     uuid id PK
     uuid audit_log_id FK
   }
+  record_notes {
+    uuid id PK
+    uuid author_id FK
+  }
+  legal_holds {
+    uuid id PK
+    uuid safeguarding_incident_id FK
+    uuid placed_by FK
+  }
   files {
     uuid id PK
   }
@@ -51,6 +60,9 @@ erDiagram
   settings ||--o{ setting_versions : "setting_id"
   users |o--o{ setting_versions : "changed_by"
   audit_logs ||--o{ audit_log_personal_data : "audit_log_id"
+  users |o--o{ record_notes : "author_id"
+  safeguarding_incidents ||--o{ legal_holds : "safeguarding_incident_id"
+  users ||--o{ legal_holds : "placed_by"
   tags ||--o{ taggables : "tag_id"
 ```
 <!-- erd:diagram:end -->
@@ -86,7 +98,7 @@ Constraints and indexes:
 | version_no | integer | no | | 1, 2, … per setting |
 | value | jsonb | no | | value of this version |
 | effective_at | timestamptz | no | | |
-| reason | text | yes | | |
+| reason | text | yes | | no-PII: describes a configuration change; the form says not to write personal data |
 | changed_by | uuid | yes | users.id | null only for the initial seed |
 | created_at | timestamptz | no | | |
 
@@ -101,10 +113,11 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | snapshot | jsonb | no | | the `attendance.*`, `credits.*`, `subscription.*`, `billing.*`, `trial.*` and `teacher.*` setting values in force (ADR-007) |
 | snapshot_hash | string | no | | sha256 of the canonical snapshot |
+| effective_at | timestamptz | no | | when this rule set came into force |
 | created_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (snapshot_hash)`: one row per distinct rule set; a settings change that touches a rule key creates the next row.
+- `INDEX (snapshot_hash)`, `INDEX (effective_at)`: every settings change that touches a rule key appends a row, also when it returns to an earlier set, so the timeline of rules in force is complete.
 
 ### `audit_logs`
 - Kind: append-only · Spec: audit_logs · Reqs: SEC-11, ADM-13, RBAC-04, RBAC-05, ADM-08, PAY-05 · Scope: none (read by system admin)
@@ -118,7 +131,7 @@ Constraints and indexes:
 | entity_type | string | yes | | |
 | entity_id | uuid | yes | | polymorphic |
 | changes | jsonb | yes | | before/after of non-personal fields only; registry columns are recorded as changed without values (D-14) |
-| reason | text | yes | | written reason for sensitive actions (RBAC-04) |
+| reason_code | string | yes | | TBD(WP-1.3); the written reason for sensitive actions (RBAC-04) is a `record_notes` row |
 | request_ref | string | yes | | the API `request_id` of the call (Art. 10) |
 | occurred_at | timestamptz | no | | |
 | created_at | timestamptz | no | | |
@@ -126,9 +139,10 @@ Constraints and indexes:
 Constraints and indexes:
 - `INDEX (entity_type, entity_id, occurred_at)`, `INDEX (actor_type, actor_id, occurred_at)`, `INDEX (action, occurred_at)` (ADM-13 search by user, entity, action, date)
 - Kept at least 2 years, then archived (F17:50). Retention runs as `sura_retention`.
+- When the actor is a student, no IP or user agent is recorded anywhere (COPPA persistent identifiers); WP-1.3 tests it.
 
 ### `audit_log_personal_data`
-- Kind: mutable · Spec: NEW (D-14 + SEC-11: the audit row stays immutable while its personal part stays erasable) · Reqs: SEC-11 · Scope: none
+- Kind: append-only · Spec: NEW (D-14 + SEC-11: the audit row stays immutable while its personal part stays erasable) · Reqs: SEC-11 · Scope: none
 
 | Column | Type | Null | References | Notes |
 | --- | --- | --- | --- | --- |
@@ -138,11 +152,44 @@ Constraints and indexes:
 | user_agent | text | yes | | PII |
 | personal_changes | jsonb | yes | | PII; before/after of registry columns |
 | created_at | timestamptz | no | | |
-| updated_at | timestamptz | no | | |
 
 Constraints and indexes:
 - `UNIQUE (audit_log_id)`
-- Deleted (never updated) on an erasure request for the subject or at the end of the audit period.
+- Never updated; deleted only by `sura_retention`, on an erasure request for the subject or at the end of the audit period.
+
+### `record_notes`
+- Kind: mutable · Spec: NEW (privacy review: append-only tables keep a `reason_code`; the free text that may name a child lives here, erasable) · Reqs: RBAC-04, ATT-05, ADM-09, PAY-05 · Scope: via the noted record
+
+| Column | Type | Null | References | Notes |
+| --- | --- | --- | --- | --- |
+| id | uuid | no | | PK (v7) |
+| notable_type | string | no | | values: audit_log\|credit_ledger_entry\|subscription_event\|wallet_entry\|enrollment_history |
+| notable_id | uuid | no | | polymorphic |
+| body | text | no | | PII; the written reason |
+| author_id | uuid | yes | users.id | |
+| created_at | timestamptz | no | | |
+| updated_at | timestamptz | no | | |
+
+Constraints and indexes:
+- `INDEX (notable_type, notable_id)`; never updated by the app; erased with the subject or kept as long as the noted record's period.
+
+### `legal_holds`
+- Kind: mutable · Spec: NEW (D-38, Open: keep safeguarding evidence past ordinary retention) · Reqs: SAFE-02, SAFE-05 · Scope: none (safeguarding officer and system admin)
+
+| Column | Type | Null | References | Notes |
+| --- | --- | --- | --- | --- |
+| id | uuid | no | | PK (v7) |
+| safeguarding_incident_id | uuid | no | safeguarding_incidents.id | |
+| holdable_type | string | no | | values: recording\|session_chat\|participant_events\|student |
+| holdable_id | uuid | no | | polymorphic |
+| placed_by | uuid | no | users.id | |
+| released_at | timestamptz | yes | | |
+| created_at | timestamptz | no | | |
+| updated_at | timestamptz | no | | |
+
+Constraints and indexes:
+- `UNIQUE (safeguarding_incident_id, holdable_type, holdable_id)`, `INDEX (holdable_type, holdable_id) WHERE released_at IS NULL`
+- The retention job and the erasure job skip any record with an unreleased hold. Whether holds apply, and for how long, is D-38.
 
 ### `files`
 - Kind: mutable · Spec: files · Reqs: SEC-09, HW-06, CNT-07, BIL-09, BIL-11, RPT-06, MSG-01 · Scope: via the owning record
@@ -248,8 +295,8 @@ Constraints and indexes:
 | id | bigint | no | | PK (spatie/laravel-webhook-client) |
 | name | string | no | | provider config: `paytabs`, `livekit`, … |
 | url | string | no | | |
-| headers | jsonb | yes | | |
-| payload | jsonb | yes | | raw event (BIL-16); PII when the provider sends contact data |
+| headers | jsonb | yes | | PII (may carry the caller's IP) |
+| payload | jsonb | yes | | PII; raw event (BIL-16); payment events carry guardian billing data, video events the participant's opaque id and first name |
 | exception | text | yes | | |
 | event_ref | string | no | | added by us: the provider's event id |
 | processed_at | timestamptz | yes | | added by us |
@@ -259,7 +306,7 @@ Constraints and indexes:
 
 Constraints and indexes:
 - `UNIQUE (name, event_ref)`: a duplicate delivery is stored once and processed once (spec/15 «كل حدث خارجي يُعالج مرة واحدة فقط»)
-- Only events with a valid signature are stored.
+- Only events with a valid signature are stored. For PayTabs, WP-2.5 confirms the event id: if callbacks reuse `tran_ref` as the status moves, `event_ref` is `tran_ref:response_status`.
 
 ### `job_batches`
 - Kind: framework · Spec: NEW (Laravel queue batching; queues run on Redis) · Reqs: — · Scope: none
@@ -287,7 +334,7 @@ Constraints and indexes:
 | connection | text | no | | |
 | queue | text | no | | |
 | payload | text | no | | jobs carry ids only, never personal data (Art. 8) |
-| exception | text | no | | |
+| exception | text | no | | PII (messages can quote data); kept 12 months as technical logs |
 | failed_at | timestamptz | no | | |
 
 Constraints and indexes:

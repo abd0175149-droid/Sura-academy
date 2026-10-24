@@ -133,7 +133,7 @@ erDiagram
 | activated_at | timestamptz | yes | | only after the SAFE-04 checks pass |
 | suspended_at | timestamptz | yes | | immediate suspension blocks new assignments and session entry (TOP-05, SAFE-06) |
 | terminated_at | timestamptz | yes | | |
-| status_reason | text | yes | | written reason for suspension or termination |
+| status_reason_code | string | yes | | values: performance\|conduct\|safeguarding\|resignation\|contract_end\|other (proposed); safeguarding details live only in `safeguarding_incidents` (`subject_teacher_id`), never here (SAFE-02) |
 | created_by | uuid | yes | users.id | |
 | updated_by | uuid | yes | users.id | |
 | archived_at | timestamptz | yes | | |
@@ -308,7 +308,7 @@ Constraints and indexes:
 | currency | char(3) | no | | JOD |
 | valid_from_on | date | no | | |
 | valid_to_on | date | yes | | |
-| reason | text | no | | written reason (PAY-07) |
+| reason | text | no | | PII; written reason (PAY-07) |
 | created_by | uuid | yes | users.id | finance or system admin only (PAY-07) |
 | updated_by | uuid | yes | users.id | |
 | created_at | timestamptz | no | | |
@@ -336,7 +336,8 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (teacher_id, period_month_on)`
+- `UNIQUE (teacher_id, period_month_on)`, `CHECK (currency = 'JOD')`
+- Trigger: `total_minor` and `period_month_on` cannot change once `status` is not `draft`.
 - A dispute opens a `support_threads` row for finance (TCH-12).
 
 ### `compensation_lines`
@@ -357,7 +358,8 @@ Constraints and indexes:
 | period_month_on | date | no | | D-04 |
 | rule_version_id | uuid | no | rule_versions.id | settings in force |
 | compensation_rule_id | uuid | yes | compensation_rules.id | exception applied |
-| reason | text | yes | | required for adjustments (PAY-05) |
+| reason | text | yes | | PII; required for adjustments (PAY-05) |
+| idempotency_key | string | no | | e.g. `pay:<session_id>:<kind>`, `adjustment:<request uuid>` |
 | approved_by | uuid | yes | users.id | finance approval of adjustments (PAY-05) |
 | approved_at | timestamptz | yes | | |
 | created_by | uuid | yes | users.id | |
@@ -365,9 +367,9 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (teacher_id, session_id, kind) WHERE session_id IS NOT NULL`: a session is paid once per kind
-- `INDEX (teacher_id, period_month_on)`
-- Frozen once its statement is approved; corrections are new `adjustment` lines.
+- `UNIQUE (session_id, kind) WHERE session_id IS NOT NULL AND kind <> 'adjustment'`: a session is paid once per kind, whoever taught it; a corrected `actual_teacher_id` moves the line before approval, or is an adjustment after it
+- `UNIQUE (idempotency_key)`, `INDEX (teacher_id, period_month_on)`, `CHECK (currency = 'JOD')`
+- Trigger: UPDATE and DELETE are rejected once the line's statement is not `draft`; corrections are new `adjustment` lines.
 
 ### `payouts`
 - Kind: mutable · Spec: payouts · Reqs: PAY-06 · Scope: teacher_id (finance)
@@ -388,4 +390,4 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (statement_id)`
+- `UNIQUE (statement_id)`, `CHECK (currency = 'JOD')`
