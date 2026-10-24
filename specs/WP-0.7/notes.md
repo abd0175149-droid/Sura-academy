@@ -31,7 +31,7 @@
 | --- | --- |
 
 ## Review findings
-Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER, 14 MAJOR), `privacy-reviewer-1.md` (0 BLOCKER, 13 MAJOR); pass 2 `ledger-auditor-2.md` (all pass-1 items resolved; 1 new BLOCKER, 3 MAJOR), `privacy-reviewer-2.md` (all resolved; 2 new MAJOR); pass 3 `ledger-auditor-3.md` (all pass-2 items resolved; 1 narrow BLOCKER, 1 MAJOR), `privacy-reviewer-3.md` (0 BLOCKER, 0 MAJOR, 2 MINOR).
+Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER, 14 MAJOR), `privacy-reviewer-1.md` (0 BLOCKER, 13 MAJOR); pass 2 `ledger-auditor-2.md` (all pass-1 items resolved; 1 new BLOCKER, 3 MAJOR), `privacy-reviewer-2.md` (all resolved; 2 new MAJOR); pass 3 `ledger-auditor-3.md` (all pass-2 items resolved; 1 narrow BLOCKER, 1 MAJOR), `privacy-reviewer-3.md` (0 BLOCKER, 0 MAJOR, 2 MINOR); pass 4 `ledger-auditor-4.md` (all pass-3 items resolved; one rule-text case, schema unchanged).
 
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
@@ -83,6 +83,19 @@ Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER
 | ledger-auditor (pass 3) | MAJOR | manual −N larger than the FIFO lot; +N with no open lot | fixed: split FIFO one entry per lot (`manual:<uuid>:<lot_id>`), never overdraw; +N rejected without an open lot |
 | ledger-auditor (pass 3) | MINOR | composite FK targets lacked UNIQUE; rebuild sources for `effective_at` and `cycle_no` | fixed |
 | privacy-reviewer (pass 3) | MINOR | `record_notes` could have no subject; design wording of the free-text exception | fixed |
+| ledger-auditor (pass 4) | BLOCKER (narrow) | replacement reusing the reversed lot when the reversed entry freed nothing (EXCUSED 0 → −1) | fixed in rule text (no schema change): reuse only the freed quantity; extra charge FIFO or absorbed in the expiry entry; daily check adds lot remaining < 0 |
+
+## Hand-offs
+- **WP-2.3 (ledger engine), tests the schema already supports** (ledger-auditor pass 4):
+  - Every attendance transition, including 0 ↔ −1, on an open lot, a used-up lot and an expired lot.
+  - Manual −N larger than the total remaining across open lots is rejected.
+  - A manual split and a session charge on the same lot, serialized by the (`student_id`, `pool`) advisory lock.
+  - Reversal-of-reversal chains and the expiry-first rule.
+  - Align `.claude/skills/credit-ledger/SKILL.md` key formats and the trial-lot line with `erd/ledger.md`.
+- **WP-1.1:** replace the default `users` (bigint), `cache` and `jobs` migrations; follow `erd/README.md` migration order; the two trigger functions in data-model-conventions.md.
+- **WP-1.3:** no IP or user agent for a student actor; teachers never hold the bulk-message permission for `audience = students`; `record_notes` written with the sensitive action.
+- **WP-1.5:** VPC gate test (no `students` row before a granted `child_data` consent); `config/privacy.php` from `erd/pii-registry.md` with a test comparing the two.
+- **WP-0.8 (legal pack):** D-38, D-39, D-40 and the retention periods marked «مقترح» or «غير منصوص» in `erd/pii-registry.md`.
 
 ## خطوات العرض اليدوي
 1. …
