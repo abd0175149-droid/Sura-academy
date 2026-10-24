@@ -206,7 +206,7 @@
 | STU-11 | N | — | usability for young children is UI |
 | TCH-01 | Y | `class_sessions.starts_at`, `reports.due_at`, `feedback.status` | reads only, shown in Amman time |
 | TCH-02 | Y | `class_sessions.status` | |
-| TCH-03 | Y | `students.first_name`, `placements.level_id`, `session_attendance.status`, `reports.status` | teachers see first name, level, attendance and their own reports; never birth month/year, profile answers or guardian notes |
+| TCH-03 | Y | `students.first_name`, `placements.level_id`, `session_attendance.status`, `class_sessions.teacher_notes`, `report_items.body` | «ملاحظات التعلم» = the teachers' own learning notes (session notes and report items); teachers never see birth month/year, profile answers or the guardian's ONB-04 note |
 | TCH-04 | Y | `class_sessions.teacher_notes`, `lesson_plans.activities` | |
 | TCH-05 | Y | `session_attendance.confirmed_at`, `session_attendance.locked_at` | |
 | TCH-06 | Y | `class_sessions.lesson_id` | |

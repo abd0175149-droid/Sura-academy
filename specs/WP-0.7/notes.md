@@ -31,7 +31,7 @@
 | --- | --- |
 
 ## Review findings
-Full reports: `specs/WP-0.7/reviews/ledger-auditor-1.md` (2 BLOCKER, 15 MAJOR, 12 MINOR), `specs/WP-0.7/reviews/privacy-reviewer-1.md` (0 BLOCKER, 12 MAJOR, 16 MINOR).
+Full reports in `specs/WP-0.7/reviews/`: pass 1 `ledger-auditor-1.md` (2 BLOCKER, 14 MAJOR), `privacy-reviewer-1.md` (0 BLOCKER, 13 MAJOR); pass 2 `ledger-auditor-2.md` (all pass-1 items resolved; 1 new BLOCKER, 3 MAJOR), `privacy-reviewer-2.md` (all resolved; 2 new MAJOR).
 
 | Agent | Severity | Finding | Resolution |
 | --- | --- | --- | --- |
@@ -69,6 +69,16 @@ Full reports: `specs/WP-0.7/reviews/ledger-auditor-1.md` (2 BLOCKER, 15 MAJOR, 1
 | privacy-reviewer | MAJOR | fallback link to third parties | fixed: allow-list to our own video project, in-app route in child mode |
 | privacy-reviewer | MINOR | marketing consent | D-39 Open |
 | privacy-reviewer | MINOR | the other 15 (append-only audit side table, retention rows, partial PII columns, webhook subjects, recipients table, cookie consents append-only, PIN pepper, region CHECK + `copied_at`, admin access reason, TCH-03 projection, STU-10 note, immutable incident description, `child_age`, converted leads, `notifiable_id` text) | fixed |
+| ledger-auditor (pass 2) | BLOCKER | reverse-the-reversal vs instant expiry of a credit returned to an expired lot charges twice | fixed: reversing such an entry first reverses its expiry entry (ledger.md) |
+| ledger-auditor (pass 2) | MAJOR | `ledger_entry_id` named the chain root; a second round of edits fails | fixed: it is the chain tip; edits reverse the tip |
+| ledger-auditor (pass 2) | MAJOR | paid COMPENSATION/ADJUSTMENT entries without a lot break lot remaining | fixed: `CHECK (pool <> 'paid' OR lot_id IS NOT NULL)` + lot choice rules + reconciliation |
+| ledger-auditor (pass 2) | MAJOR | lots as source table conflict with ADR-007 §5 / D-05 «derived» | fixed: kind `derived` with its rebuild sources listed; ADR-007 §5 note; design D-05/D-28 rows |
+| ledger-auditor (pass 2) | MINOR | stale `unit_price_minor` text, `expires_at` recompute, reconciliation wording, record_notes trigger + ADR-007 §2 note, review_status default/CHECK, wallet CHECK + composite FK, invoice line deferred check, statement INSERT freeze, allocation currency FK, JOD on rules | fixed |
+| ledger-auditor (pass 2) | MINOR | conversion rounding is a business rule | D-40 Open (before WP-2.4) |
+| ledger-auditor (pass 2) | MINOR | credit-ledger skill key formats (`att:`, `purchase:<payment_id>`, `expiry:<lot_id>`, `comp:`) and trial lot differ from the ERD | deferred to WP-2.3: align `.claude/skills/credit-ledger/SKILL.md` to `erd/ledger.md` when the engine is built |
+| privacy-reviewer (pass 2) | MAJOR | `safeguarding_incident_actions` under the strict trigger cannot be purged after 7 years | fixed: moved to `forbid_mutation_except_retention` |
+| privacy-reviewer (pass 2) | MAJOR | `record_notes` not locatable by subject; NOT NULL body with `erase` | fixed: `subject_student_id` / `subject_user_id` / `subject_family_id` FKs, action `delete_row`, retention row. A checker rule against polymorphic locate paths was not added: direct person morphs (`notifiable_id`, `sender_id`) are valid paths |
+| privacy-reviewer (pass 2) | MINOR | record_notes/legal_holds triggers; holds logic pending D-38; free-text rule wording; retention trigger SQL (SECURITY INVOKER); recipient regions + AWS hosting; neutral `restricted` reason code; `title`/`exception`/`error` columns; E8 bare `no-PII`; TCH-03 learning notes column; VPC line in design §3.3 | fixed (58 self-test cases) |
 
 ## خطوات العرض اليدوي
 1. …

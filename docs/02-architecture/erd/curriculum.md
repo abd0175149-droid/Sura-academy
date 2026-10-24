@@ -270,7 +270,7 @@ Constraints and indexes:
 | kind | string | no | | values: image\|video\|audio\|pdf |
 | file_id | uuid | yes | files.id | stored file |
 | stream_ref | string | yes | | provider id for streamed lesson video (16:19) |
-| title | string | no | | |
+| title | string | no | | no-PII: media catalogue title |
 | duration_seconds | integer | yes | | audio and video |
 | licence_source | string | yes | | CNT-07 |
 | licence_type | string | yes | | CNT-07 |

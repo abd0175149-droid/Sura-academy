@@ -25,6 +25,9 @@ erDiagram
   }
   record_notes {
     uuid id PK
+    uuid subject_student_id FK
+    uuid subject_user_id FK
+    uuid subject_family_id FK
     uuid author_id FK
   }
   legal_holds {
@@ -60,6 +63,9 @@ erDiagram
   settings ||--o{ setting_versions : "setting_id"
   users |o--o{ setting_versions : "changed_by"
   audit_logs ||--o{ audit_log_personal_data : "audit_log_id"
+  students |o--o{ record_notes : "subject_student_id"
+  users |o--o{ record_notes : "subject_user_id"
+  families |o--o{ record_notes : "subject_family_id"
   users |o--o{ record_notes : "author_id"
   safeguarding_incidents ||--o{ legal_holds : "safeguarding_incident_id"
   users ||--o{ legal_holds : "placed_by"
@@ -165,13 +171,17 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | notable_type | string | no | | values: audit_log\|credit_ledger_entry\|subscription_event\|wallet_entry\|enrollment_history |
 | notable_id | uuid | no | | polymorphic |
+| subject_student_id | uuid | yes | students.id | the child the note is about, set when written; how erasure finds it |
+| subject_user_id | uuid | yes | users.id | the adult the note is about |
+| subject_family_id | uuid | yes | families.id | |
 | body | text | no | | PII; the written reason |
 | author_id | uuid | yes | users.id | |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `INDEX (notable_type, notable_id)`; never updated by the app; erased with the subject or kept as long as the noted record's period.
+- `INDEX (notable_type, notable_id)`, `INDEX (subject_student_id)`, `INDEX (subject_user_id)`, `INDEX (subject_family_id)`; trigger: UPDATE and DELETE only for `sura_retention` (erasure or redaction); kept as long as the noted record's period.
+- For ADJUSTMENT_MANUAL, REVERSAL and RBAC-04 sensitive actions the note is written in the same action as the record (WP-2.3, WP-1.3 test it).
 
 ### `legal_holds`
 - Kind: mutable · Spec: NEW (D-38, Open: keep safeguarding evidence past ordinary retention) · Reqs: SAFE-02, SAFE-05 · Scope: none (safeguarding officer and system admin)
@@ -183,13 +193,13 @@ Constraints and indexes:
 | holdable_type | string | no | | values: recording\|session_chat\|participant_events\|student |
 | holdable_id | uuid | no | | polymorphic |
 | placed_by | uuid | no | users.id | |
-| released_at | timestamptz | yes | | |
+| released_at | timestamptz | yes | | write-once (trigger) |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (safeguarding_incident_id, holdable_type, holdable_id)`, `INDEX (holdable_type, holdable_id) WHERE released_at IS NULL`
-- The retention job and the erasure job skip any record with an unreleased hold. Whether holds apply, and for how long, is D-38.
+- `UNIQUE (safeguarding_incident_id, holdable_type, holdable_id)`; DELETE is rejected for every role; placing and releasing a hold each write a `safeguarding_incident_actions` row, `INDEX (holdable_type, holdable_id) WHERE released_at IS NULL`
+- Pending D-38: if option a is chosen, the retention and erasure jobs skip any record with an unreleased hold. Until then the table exists without logic.
 
 ### `files`
 - Kind: mutable · Spec: files · Reqs: SEC-09, HW-06, CNT-07, BIL-09, BIL-11, RPT-06, MSG-01 · Scope: via the owning record
@@ -264,7 +274,7 @@ Constraints and indexes:
 | occurred_at | timestamptz | no | | |
 | published_at | timestamptz | yes | | null until dispatched |
 | attempts | smallint | no | | |
-| last_error | text | yes | | |
+| last_error | text | yes | | PII (errors can quote data); 12 months as technical logs |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
 
@@ -297,7 +307,7 @@ Constraints and indexes:
 | url | string | no | | |
 | headers | jsonb | yes | | PII (may carry the caller's IP) |
 | payload | jsonb | yes | | PII; raw event (BIL-16); payment events carry guardian billing data, video events the participant's opaque id and first name |
-| exception | text | yes | | |
+| exception | text | yes | | PII (errors can quote data) |
 | event_ref | string | no | | added by us: the provider's event id |
 | processed_at | timestamptz | yes | | added by us |
 | attempts | smallint | no | | added by us; retries with backoff, then a review queue (spec/15) |

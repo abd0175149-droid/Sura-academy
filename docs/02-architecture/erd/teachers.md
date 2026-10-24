@@ -133,7 +133,7 @@ erDiagram
 | activated_at | timestamptz | yes | | only after the SAFE-04 checks pass |
 | suspended_at | timestamptz | yes | | immediate suspension blocks new assignments and session entry (TOP-05, SAFE-06) |
 | terminated_at | timestamptz | yes | | |
-| status_reason_code | string | yes | | values: performance\|conduct\|safeguarding\|resignation\|contract_end\|other (proposed); safeguarding details live only in `safeguarding_incidents` (`subject_teacher_id`), never here (SAFE-02) |
+| status_reason_code | string | yes | | values: performance\|restricted\|resignation\|contract_end\|other (proposed); `restricted` covers conduct and safeguarding without saying which; details live only in `safeguarding_incidents` (`subject_teacher_id`), visible to the two SAFE-02 roles |
 | created_by | uuid | yes | users.id | |
 | updated_by | uuid | yes | users.id | |
 | archived_at | timestamptz | yes | | |
@@ -316,7 +316,7 @@ Constraints and indexes:
 
 Constraints and indexes:
 - `CHECK ((scope_type = 'teacher') = (teacher_id IS NOT NULL) AND (scope_type = 'class') = (class_id IS NOT NULL))`
-- No overlapping validity per scope target (exclusion constraint on `daterange(valid_from_on, valid_to_on)`).
+- No overlapping validity per scope target (exclusion constraint on `daterange(valid_from_on, valid_to_on)`), `CHECK (currency = 'JOD')`.
 
 ### `compensation_statements`
 - Kind: mutable · Spec: compensation_statements · Reqs: PAY-06, TCH-12, ADM-04 · Scope: teacher_id
@@ -369,7 +369,7 @@ Constraints and indexes:
 Constraints and indexes:
 - `UNIQUE (session_id, kind) WHERE session_id IS NOT NULL AND kind <> 'adjustment'`: a session is paid once per kind, whoever taught it; a corrected `actual_teacher_id` moves the line before approval, or is an adjustment after it
 - `UNIQUE (idempotency_key)`, `INDEX (teacher_id, period_month_on)`, `CHECK (currency = 'JOD')`
-- Trigger: UPDATE and DELETE are rejected once the line's statement is not `draft`; corrections are new `adjustment` lines.
+- Trigger: INSERT into, and UPDATE or DELETE of, a line whose statement is not `draft` are rejected (including setting `statement_id` to such a statement); corrections are new `adjustment` lines in the next draft statement.
 
 ### `payouts`
 - Kind: mutable · Spec: payouts · Reqs: PAY-06 · Scope: teacher_id (finance)

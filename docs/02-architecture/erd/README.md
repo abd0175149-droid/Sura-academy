@@ -214,27 +214,27 @@ Constraints and indexes:
 | 4 | rule_versions | Platform |  |
 | 5 | audit_logs | Platform |  |
 | 6 | audit_log_personal_data | Platform |  |
-| 7 | record_notes | Platform |  |
-| 8 | files | Platform |  |
-| 9 | tags | Platform |  |
-| 10 | taggables | Platform |  |
-| 11 | outbox_events | Platform |  |
-| 12 | features | Platform |  |
-| 13 | webhook_calls | Platform |  |
-| 14 | job_batches | Platform |  |
-| 15 | failed_jobs | Platform |  |
-| 16 | password_reset_tokens | Identity |  |
-| 17 | auth_sessions | Identity |  |
-| 18 | roles | Identity |  |
-| 19 | permissions | Identity |  |
-| 20 | role_has_permissions | Identity |  |
-| 21 | model_has_roles | Identity |  |
-| 22 | model_has_permissions | Identity |  |
-| 23 | personal_access_tokens | Identity |  |
-| 24 | families | Families |  |
-| 25 | device_authorizations | Identity | after families |
-| 26 | guardians | Families |  |
-| 27 | students | Families |  |
+| 7 | files | Platform |  |
+| 8 | tags | Platform |  |
+| 9 | taggables | Platform |  |
+| 10 | outbox_events | Platform |  |
+| 11 | features | Platform |  |
+| 12 | webhook_calls | Platform |  |
+| 13 | job_batches | Platform |  |
+| 14 | failed_jobs | Platform |  |
+| 15 | password_reset_tokens | Identity |  |
+| 16 | auth_sessions | Identity |  |
+| 17 | roles | Identity |  |
+| 18 | permissions | Identity |  |
+| 19 | role_has_permissions | Identity |  |
+| 20 | model_has_roles | Identity |  |
+| 21 | model_has_permissions | Identity |  |
+| 22 | personal_access_tokens | Identity |  |
+| 23 | families | Families |  |
+| 24 | device_authorizations | Identity | after families |
+| 25 | guardians | Families |  |
+| 26 | students | Families |  |
+| 27 | record_notes | Platform | after families, students |
 | 28 | student_pins | Identity | after students |
 | 29 | student_login_codes | Identity | after students |
 | 30 | student_profiles | Families |  |

@@ -22,7 +22,7 @@
 | D-02 | `compensation_lines` per executed session for `class_sessions.actual_teacher_id`, `kind = session`, amount in fils; `teacher.substitute_per_session_jod` is not read by the schema. |
 | D-03 | `compensation_lines.paid_student_count` snapshot taken at session start; trial and paused enrollments excluded by query (`class_enrollments.kind`, `status`). |
 | D-04 | `compensation_lines.period_month_on` (first day of month in `Asia/Amman`); `compensation_statements` unique `(teacher_id, period_month_on)`. |
-| D-05 | `credit_lots`: `subscription_id`, `pool`, `qty_granted`, `effective_at`, `cycle_end_at`, `expires_at`, `frozen_days`, `unit_price_minor` + `currency` (for D-28). Derived and rebuildable from the ledger; the lot is inserted first and `credit_ledger_entries.lot_id` points to it (ADR-007), so there is no FK cycle. |
+| D-05 | `credit_lots`: `subscription_id`, `payment_allocation_id`, `cycle_no`, `pool`, `qty_granted`, `amount_paid_minor` + `currency`, `effective_at`, `cycle_end_at`, `base_expires_at`, `expires_at` (cache). Derived: rebuildable from the purchase entry, its payment allocation, the rule version and append-only `credit_lot_extensions` (freezes); the lot is inserted first and every paid-pool entry carries `lot_id` (ADR-007 §5 note), so there is no FK cycle. |
 | D-06 | No column: the cap is a query over the last 8 scheduled sessions (`session_attendance`), setting `attendance.max_excused_per_8`. |
 | D-07 | `subscriptions.renewal_reminded_at`, `renewal_not_before_at` (72 h after the reminder). |
 | D-08 | `class_enrollments.kind` ∈ {regular, trial}; `class_sessions.type` keeps `trial` as a reserved value. |
@@ -32,7 +32,7 @@
 | D-12 | `calendar_exceptions.status` ∈ {tentative, confirmed}, `confirmed_at`. |
 | D-14 | Personal data lives in registered columns/tables (§3.3); financial, ledger and history rows keep opaque ids only. Audit logs keep the actor id; IP, user agent and personal before/after values go to an erasable side table `audit_log_personal_data`. |
 | D-26 | `learning_outcomes` (stable `code` like `AR-L2-R-03`, `variety`) and `outcome_alignments`; no UI. CNT-09 "can do" statements are `learning_outcomes` rows of a level, so `level_outcomes` is merged into it. |
-| D-28 | Ledger type `CONVERSION_TO_WALLET`; `wallet_entries.source_ledger_entry_id`, amount = sessions × `credit_lots.unit_price_minor`. |
+| D-28 | Ledger type `CONVERSION_TO_WALLET` (one per lot); `wallet_entries.source_ledger_entry_id`; amount = `amount_paid_minor × remaining ÷ qty_granted`, rounded once (rounding rule: D-40). |
 | D-30 | `seat_holds`: `class_id`, `student_id`, `reason` ∈ {payment, waitlist_offer}, `expires_at`, `released_at`, `converted_at`. |
 
 Also consulted because they shape columns (Default): D-13 (Open, not in this WP's row) only needs `consents.verification_method` as a nullable string with no CHECK until it is decided, which is the "pluggable `VpcMethod`" D-13 itself prescribes; D-15 retention defaults feed the registry; D-16 recording residency (`recordings.storage_region`); D-18 `variety = msa`; D-24 maintenance-window override (`class_sessions.maintenance_override_reason`); D-27 freeze rules read from `subscription_events`; D-29 second trial is a `CREDIT_TRIAL` entry with `reason`.
@@ -73,11 +73,11 @@ Each module file: a short intro, the generated diagram, then one section per tab
 | --- | --- | --- | --- | --- |
 | id | uuid | no | | PK (v7) |
 | student_id | uuid | no | students.id | |
-| unit_price_minor | bigint | no | | D-28 |
+| amount_paid_minor | bigint | no | | D-28 |
 | currency | char(3) | no | | ISO 4217 |
 | expires_at | timestamptz | no | | extended by freezes |
 Constraints and indexes:
-- `UNIQUE (source_entry_id)`
+- `UNIQUE (payment_allocation_id)`
 - `INDEX (student_id, pool, expires_at)`
 ```
 Kinds: `mutable` · `append-only` · `derived` (rebuildable from other tables) · `package` (schema owned by a Composer package, uuid morph keys) · `framework` (Laravel infrastructure). Mermaid shows PK/FK columns and relations, generated from the tables so it cannot drift; cross-module targets appear as attribute-less stubs.
@@ -103,11 +103,12 @@ Owner per `architecture.md` §3. **NEW** = not in spec/14 (reason in the module 
 
 ### 3.3 Modeling choices that answer the readers' gaps
 Each is a storage consequence of stated text, not a new business rule. Each appears in the module file with its source.
+- **VPC gate (D-13, ADR-009 §3):** a `students` row is created only by the guardian after a granted `child_data` consent; operations never create children (ONB-12 invites the guardian). WP-1.5 tests it.
 - **Students are not users** (S:4, glossary "حساب مُدار"). Child mode authenticates a `Student` through `student_pins` / `student_login_codes` on an authorized device and gets a short Sanctum token (`personal_access_tokens` polymorphic). Students can still receive in-app notifications (Laravel `notifiable` morph).
 - **Child fields are exactly PRV-04 + ONB-03**: `students.first_name`, `birth_month`, `birth_year`; `student_profiles.primary_language`, `arabic_level_estimate`, self-assessment answers, `notes` (ONB-04 free text). No photo, email or address column anywhere for a child. `students.departed_at` anchors the "after the student leaves" retention clocks (F17:45-46); when it is set is decided in WP-5.2.
 - **Time:** user display zone `users.timezone` (IANA) and `users.locale`; family market `families.country_code` (ONB-01 country, D-17, BIL-12 refund market). Teacher availability: weekday + local time + `ref_timezone` (`Asia/Amman`). Student availability: see D-37.
 - **Audit:** `audit_logs` (append-only) holds actor id, action, entity, non-personal before/after values and `occurred_at`. IP, user agent and before/after values of registry columns go to `audit_log_personal_data` (1:1, erasable by `sura_retention`). This keeps SEC-11 (values and address are recorded) and D-14 (audit keeps the actor id only once personal data is erased).
-- **Append-only tables that hold personal data** (`consents.ip/user_agent`, `participant_events`, `delivery_logs`, `session_chat_messages`, `cookie_consents`, `audit_log_personal_data`) reject UPDATE always and allow DELETE only for `sura_retention` (trigger `forbid_mutation_except_retention`, data-model-conventions.md); the ledger, wallet, subscription events and version tables reject DELETE for every role. A deletion request does not shorten a legal-evidence period (consents: D-15). Recipients in `delivery_logs` are stored masked (SEC-12), with `recipient_id` for lookups. Append-only tables carry `reason_code`; free text lives in the erasable `record_notes` (privacy review).
+- **Append-only tables that hold personal data** (`consents.ip/user_agent`, `participant_events`, `delivery_logs`, `session_chat_messages`, `cookie_consents`, `audit_log_personal_data`) reject UPDATE always and allow DELETE only for `sura_retention` (trigger `forbid_mutation_except_retention`, data-model-conventions.md; `safeguarding_incident_actions` too, after 7 years); the ledger, wallet, subscription events, lot extensions and version tables reject DELETE for every role. A deletion request does not shorten a legal-evidence period (consents: D-15). Recipients in `delivery_logs` are stored masked (SEC-12), with `recipient_id` for lookups. Append-only tables carry `reason_code`; free text lives in the erasable `record_notes` (privacy review).
 - **Sessions:** status per state-machines.md (`scheduled`, `in_progress`, `completed`, `cancelled`, `postponed`) plus `outcome`; a postponement or compensation creates a new row with `replaces_session_id`. `class_sessions.lesson_id` records curriculum progress (TCH-06); `teacher_notes` holds CLS-11 notes (registry: free text). `actual_started_at` serves the 5-minute late alert (05:31).
 - **Ledger unique key:** constitution Art. 5 §2 says the unique key `(student_id, session_id, type)` applies to "قيود الحصص". Index: `UNIQUE (student_id, session_id, type) WHERE type IN ('CONSUMPTION_ATTENDANCE','ABSENCE_UNEXCUSED','EXTENSION_ABSENCE_EXCUSED','COMPENSATION_ACADEMY')`, plus `UNIQUE (reverses_entry_id)` (an entry is reversed at most once) and `UNIQUE (idempotency_key)` with deterministic key formats. A REVERSAL carries the original's `session_id` but is outside the key. A post-lock edit that must reinstate an entry already reversed (A→B→A) posts a REVERSAL of that reversal (changed after the ledger-auditor review: the earlier `ADJUSTMENT_MANUAL` path escaped every uniqueness guard). Entries post once, at attendance lock; `session_attendance.ledger_entry_id` points to the current effective entry and changes under a row lock. Recorded in ADR-007 §6 as the WP-0.7 reading.
 - **Invoices:** `invoices.number` unique and sequential (BIL-11); the series format is WP-2.4's. Issuer and customer details are frozen in `issuer_snapshot` / `customer_snapshot` jsonb (allowed: snapshots).

@@ -37,7 +37,7 @@ const DISPOSITIONS = ['same', 'renamed', 'merged', 'package', 'deferred'];
 const PII_ACTIONS = ['erase', 'pseudonymize', 'delete_row', 'delete_file', 'retain_until_period'];
 const TYPES = '/^(uuid|string|text|smallint|integer|bigint|boolean|timestamptz|date|time|jsonb|inet|char\(\d+\))$/';
 const REQ_ID = '/^[A-Z]{2,5}-\d{2,3}$/';
-const FREE_TEXT = '/^(reason|note|notes|details|comment|body|description|label)$|_(reason|note|notes|details|comment|label|text|body)$/';
+const FREE_TEXT = '/^(reason|note|notes|details|comment|body|description|label|title|message|exception|error)$|_(reason|note|notes|details|comment|label|text|body|message|exception|error)$/';
 
 $errors = [];
 
@@ -302,7 +302,7 @@ foreach ($tables as $t => $info) {
         }
         // E8: free text can always carry a child's name or health detail, so it is personal unless stated otherwise.
         if (in_array($type, ['text', 'string', 'jsonb'], true) && preg_match(FREE_TEXT, $name)
-            && !preg_match('/\bPII\b|no-PII:/', $c['notes'])) {
+            && !preg_match('/(?<!no-)\bPII\b|no-PII:\s*\S/', $c['notes'])) {
             $errors[] = "{$t}.{$name}: free text must be tagged PII or say no-PII: <why>";
         }
         if ((in_array($name, ['status', 'kind', 'type'], true) || str_ends_with($name, '_status'))

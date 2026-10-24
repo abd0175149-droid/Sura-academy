@@ -16,11 +16,11 @@
 
 قواعد عامة (D-14):
 - القيود المالية ودفتر الرصيد والحضور وتاريخ التسجيل لا تُحذف. تبقى مرتبطة بمعرّفات لا تدل على شخص بعد محو الاسم والبريد والهاتف (`students.pseudonymized_at`، `users.pseudonymized_at`).
-- جداول الإضافة فقط لا تحمل نصاً حراً. النص الحر في `record_notes` القابل للمحو.
+- جداول الإضافة فقط لا تحمل نصاً حراً، والنص الحر في `record_notes` القابل للمحو. يُستثنى ما يُحذف صفه كله بدور الاحتفاظ أو يُحفظ بمدة D-15: دردشة الحصة وخطوات بلاغ الحماية.
 - سجل التدقيق يحتفظ بمعرّف الفاعل فقط. عنوانه وجهازه والقيم الشخصية في `audit_log_personal_data`، ويُحذف ذلك الصف. لا يُسجَّل عنوان ولا جهاز حين يكون الفاعل طفلاً.
 - الحذف القانوني ينفّذه دور قاعدة البيانات `sura_retention` فقط، بدالة حذف لكل جدول (data-model-conventions.md)، ويُسجَّل كل حذف في `audit_logs` (`privacy.erased`، `retention.deleted`) بالمعرّفات فقط.
 - طلب حذف بيانات طفل يحذف أيضاً تسجيلات الجلسات التي حضرها ضمن مدة احتفاظها، ويجدها عبر `session_attendance.student_id` (D-14 «الملفات والتسجيلات تُحذف نهائياً»، D-11 «ما لم يُطلب حذفها»).
-- أي صف عليه تعليق قانوني غير محرر في `legal_holds` لا يُحذف ولا يُمحى (D-38، Open).
+- بانتظار D-38 (Open): إن اعتُمد الخيار أ، لا يُحذف ولا يُمحى أي صف عليه تعليق قانوني غير محرر في `legal_holds`.
 - لا تُرسل بيانات شخصية إلى السجلات التقنية ولا Sentry ولا التحليلات ولا أي نموذج ذكاء اصطناعي (SEC-12، ADR-009 §4 و§7).
 
 ## الأعمدة
@@ -37,12 +37,14 @@
 | `audit_log_personal_data.ip` | adult | `audit_log_personal_data.audit_log_id`, `audit_logs.actor_id` | delete_row | audit period, at least 2 years; earlier on an erasure request | SEC-11, F17:50, D-14 |
 | `audit_log_personal_data.user_agent` | adult | `audit_log_personal_data.audit_log_id`, `audit_logs.actor_id` | delete_row | as above | SEC-11, D-14 |
 | `audit_log_personal_data.personal_changes` | any | `audit_log_personal_data.audit_log_id`, `audit_logs.entity_id` | delete_row | as above | SEC-11, D-14 |
-| `record_notes.body` | free text | `record_notes.notable_id` | erase | with the noted record's period | D-14 |
-| `files.path` | any (owner decides) | `files.owner_id`, `files.uploader_id` | delete_file | by owner: homework 12 months after the student leaves; recordings 30 / 90 days; transfer proofs and invoices per accounting law; teacher documents not stated | F17:44-47 |
-| `files.original_name` | any | `files.owner_id`, `files.uploader_id` | erase | with the file | D-14 |
+| `record_notes.body` | free text | `record_notes.subject_student_id`, `record_notes.subject_user_id`, `record_notes.subject_family_id` | delete_row | with the noted record's period; earlier on an erasure request | D-14 |
+| `files.path` | any (owner decides) | `submission_files.file_id`, `recordings.file_id`, `teacher_documents.file_id`, `payments.transfer_proof_file_id`, `data_requests.export_file_id`, `files.uploader_id` | delete_file | by owner: homework 12 months after the student leaves; recordings 30 / 90 days; transfer proofs and invoices per accounting law; teacher documents not stated | F17:44-47 |
+| `files.original_name` | any | `submission_files.file_id`, `teacher_documents.file_id`, `files.uploader_id` | erase | with the file | D-14 |
 | `webhook_calls.payload` | guardian / child | `webhook_calls.created_at` | retain_until_period | 12 months (technical logs); not linkable to a person | F17:49 |
 | `webhook_calls.headers` | adult | `webhook_calls.created_at` | retain_until_period | 12 months (technical logs) | F17:49 |
 | `failed_jobs.exception` | any | `failed_jobs.failed_at` | retain_until_period | 12 months (technical logs) | F17:49 |
+| `webhook_calls.exception` | any | `webhook_calls.created_at` | retain_until_period | 12 months (technical logs) | F17:49 |
+| `outbox_events.last_error` | any | `outbox_events.occurred_at` | retain_until_period | 12 months (technical logs) | F17:49 |
 | `family_invitations.email` | guardian | `family_invitations.family_id` | delete_row | until accepted or expired | ONB-12 |
 | `students.first_name` | child | `students.id` | pseudonymize | account life; proposed: pseudonymized at `departed_at` + 3 years (as reports) | PRV-04, D-14 |
 | `students.first_name_normalized` | child | `students.id` | erase | proposed: erased at `departed_at` | D-09, D-14 |
@@ -61,6 +63,7 @@
 | `leads.phone_e164` | lead | `leads.email`, `leads.converted_family_id` | delete_row | as above | F17:48 |
 | `leads.message` | lead | `leads.email`, `leads.converted_family_id` | delete_row | as above | F17:48 |
 | `lead_events.body` | lead | `lead_events.lead_id` | delete_row | with the lead | F17:48 |
+| `follow_up_tasks.title` | free text | `follow_up_tasks.family_id`, `follow_up_tasks.lead_id` | pseudonymize | with the family or lead | ADM-02 |
 | `follow_up_tasks.body` | free text | `follow_up_tasks.family_id`, `follow_up_tasks.lead_id` | erase | with the family or lead | ADM-02 |
 | `waitlist_entries.child_age` | child (visitor) | `waitlist_entries.lead_id` | delete_row | with the lead | F17:48 |
 | `safeguarding_incidents.description` | child | `safeguarding_incidents.student_id` | retain_until_period | 7 years | D-15 |
@@ -126,6 +129,7 @@
 | الموافقات | `consents` | عمر الحساب + 3 سنوات | حذف | D-15 |
 | بلاغات الحماية | `safeguarding_incidents`، `safeguarding_incident_actions` | 7 سنوات | حذف | D-15 |
 | محادثات الدعم | `support_threads`، `support_messages` | 12 شهراً بعد الإغلاق | حذف | D-15 |
+| أسباب مكتوبة | `record_notes` | مدة السجل الذي تشرحه | حذف | D-14 |
 | ملف تصدير البيانات | `data_requests.export_file_id` | 30 يوماً بعد الإنجاز (مقترح) | حذف | PRV-07 (مقترح) |
 
 متى تُضبط `students.departed_at`: مقترح أن تُضبط تلقائياً بعد 90 يوماً بلا تسجيل نشط ولا اشتراك حي، أو فوراً عند إغلاق الحساب. تحسمه WP-5.2.
@@ -147,12 +151,13 @@
 | المستلم | ما يصله | المنطقة | المرجع |
 | --- | --- | --- | --- |
 | LiveKit Cloud (الفيديو) | معرّف المشارك المعتم، والاسم الأول للطفل، وعنوان IP ومعلومات الجهاز، والصوت والصورة مباشرة | منطقة بيانات أوروبية؛ حصر المرور في D-35 | ADR-005، D-35 |
+| AWS (الاستضافة) | قاعدة البيانات والخوادم وRedis، أي كل بيانات المنصة | `eu-central-1` | architecture.md §6، 16:15 |
 | Amazon S3 | الملفات والتسجيلات | `eu-central-1` | D-16 |
-| Amazon SES (البريد) | بريد ولي الأمر، والاسم الأول للطفل في نص بعض الرسائل | — | 16:13 |
-| Twilio (الرسائل النصية والتحقق) | هاتف البالغ؛ لا بيانات طفل أبداً | — | 16:12 |
+| Amazon SES (البريد) | بريد ولي الأمر، والاسم الأول للطفل في نص بعض الرسائل | تُختار منطقة أوروبية؛ مراجعة قانونية في WP-0.8 | 16:13 |
+| Twilio (الرسائل النصية والتحقق) | هاتف البالغ؛ لا بيانات طفل أبداً | مراجعة قانونية في WP-0.8 | 16:12 |
 | PayTabs (الدفع) | بيانات فوترة ولي الأمر وبطاقته (لدى البوابة فقط) | الأردن | ADR-006، D-36 |
 | PostHog | معرّفات معتمة فقط، ولا شيء من وضع الطفل | السحابة الأوروبية | D-23 |
-| Sentry | الأخطاء بلا بيانات شخصية | — | ADR-009 §4 |
+| Sentry | الأخطاء بلا بيانات شخصية | مراجعة قانونية في WP-0.8 | ADR-009 §4 |
 
 ## شكل `config/privacy.php` (لـ WP-1.5)
 
@@ -181,7 +186,7 @@ return [
         'safeguarding_incidents' => ['clock' => 'closed_at', 'years' => 7, 'action' => 'delete_row', 'source' => 'D-15'],
         // … one entry per row of the retention table
     ],
-    // Both jobs skip any row with an unreleased legal hold (D-38).
-    'honour_legal_holds' => true,
+    // Pending D-38 (Open): true only if option a is approved.
+    'honour_legal_holds' => null,
 ];
 ```

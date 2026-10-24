@@ -306,7 +306,7 @@ Constraints and indexes:
 | payment_method_id | uuid | yes | payment_methods.id | |
 | three_ds_result | string | yes | | BIL-05 |
 | failure_code | string | yes | | |
-| review_status | string | no | | values: none\|needs_review\|resolved (amount or currency mismatch, S2 guard «المبلغ = المتوقع»; a flag beside the state machine, not a state) |
+| review_status | string | no | | default `none`; values: none\|needs_review\|resolved (amount or currency mismatch, S2 guard «المبلغ = المتوقع»; a flag beside the state machine, not a state) |
 | review_reason_code | string | yes | | values: amount_mismatch\|currency_mismatch\|duplicate\|other |
 | transfer_proof_file_id | uuid | yes | files.id | manual transfer proof (BIL-09, PAR-08) |
 | reviewed_by | uuid | yes | users.id | finance approves a manual transfer (BIL-09, ADM-08) |
@@ -318,6 +318,7 @@ Constraints and indexes:
 
 Constraints and indexes:
 - `UNIQUE (idempotency_key)`, `UNIQUE (provider, provider_ref) WHERE provider_ref IS NOT NULL` (no double processing)
+- `CHECK ((review_status = 'none') = (review_reason_code IS NULL))`; allocations, lots and activation need `status = 'succeeded' AND review_status <> 'needs_review'`.
 - `INDEX (family_id, created_at)`, `INDEX (status)`
 
 ### `payment_allocations`
@@ -334,7 +335,7 @@ Constraints and indexes:
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
-- `UNIQUE (payment_id, subscription_id)`; the sum per payment equals `payments.amount_minor` (checked in the action).
+- `UNIQUE (payment_id, subscription_id)`; composite FK `(payment_id, currency) → payments (id, currency)`; the sum per payment equals `payments.amount_minor` (checked in the action).
 
 ### `subscription_events`
 - Kind: append-only · Spec: subscription_events · Reqs: BIL-06, BIL-08, BIL-14, PAR-09 · Scope: family_id
@@ -402,7 +403,7 @@ Constraints and indexes:
 Constraints and indexes:
 - `UNIQUE (number)`, `UNIQUE (payment_id) WHERE kind = 'invoice'`, `INDEX (family_id, issued_at)`
 - `CHECK (total_minor = subtotal_minor - discount_minor + tax_minor)`
-- Trigger: once `issued_at` is set, UPDATE may change only `pdf_ar_file_id`, `pdf_en_file_id` and `updated_at`; DELETE is rejected. The same trigger guards `invoice_lines` of an issued invoice. Corrections are credit notes; kept per Jordanian accounting law in a restricted archive (F17:47).
+- Trigger: once `issued_at` is set, UPDATE may change only `pdf_ar_file_id`, `pdf_en_file_id` and `updated_at`; DELETE is rejected. Lines are inserted only in the issuing transaction; a deferred constraint trigger checks Σ line `amount_minor` = `subtotal_minor − discount_minor + tax_minor` at commit and rejects later line changes. Corrections are credit notes; kept per Jordanian accounting law in a restricted archive (F17:47).
 
 ### `invoice_lines`
 - Kind: mutable · Spec: invoice_lines · Reqs: BIL-11, BIL-03, BIL-04 · Scope: family_id (via invoice)
@@ -482,7 +483,7 @@ Constraints and indexes:
 | type | string | no | | values: CONVERSION_CREDIT\|PAYMENT_USE\|REFUND_CREDIT\|EXPIRY\|REVERSAL (proposed) |
 | amount_minor | bigint | no | | signed; balance = sum per family and currency |
 | currency | char(3) | no | | USD (BIL-13) |
-| source_ledger_entry_id | uuid | yes | credit_ledger_entries.id | the `CONVERSION_TO_WALLET` entry: remaining sessions × `credit_lots.unit_price_minor` (D-28) |
+| source_ledger_entry_id | uuid | yes | credit_ledger_entries.id | the `CONVERSION_TO_WALLET` entry; amount per the conversion formula in `ledger.md` (`credit_lots`, D-28) |
 | payment_id | uuid | yes | payments.id | wallet used on a payment |
 | refund_id | uuid | yes | refunds.id | academy-fault refund taken as wallet credit |
 | reverses_entry_id | uuid | yes | wallet_entries.id | |
@@ -498,4 +499,5 @@ Constraints and indexes:
 Constraints and indexes:
 - `UNIQUE (idempotency_key)`, `UNIQUE (reverses_entry_id)`, `UNIQUE (source_ledger_entry_id) WHERE source_ledger_entry_id IS NOT NULL`, `INDEX (family_id, created_at)`
 - Trigger `forbid_mutation`; corrections are `REVERSAL` rows.
-- Remaining per credit = its amount + Σ linked `PAYMENT_USE`/`EXPIRY` rows; every write takes an advisory lock on (`family_id`, `currency`) so concurrent uses cannot overdraw.
+- `CHECK ((type IN ('PAYMENT_USE','EXPIRY')) = (credit_entry_id IS NOT NULL))`; composite FK `(credit_entry_id, family_id, currency) → wallet_entries (id, family_id, currency)`.
+- Remaining per credit = its amount + Σ linked `PAYMENT_USE`/`EXPIRY` rows and their REVERSALs; every write takes an advisory lock on (`family_id`, `currency`) so concurrent uses cannot overdraw.

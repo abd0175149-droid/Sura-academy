@@ -74,7 +74,7 @@ erDiagram
 | class_id | uuid | no | classes.id | |
 | lesson_id | uuid | yes | lessons.id | linked lesson (HW-01) |
 | teacher_id | uuid | no | teachers.id | |
-| title | string | no | | |
+| title | string | no | | no-PII: homework title for the whole class |
 | instructions_ar | text | no | | HW-01 |
 | instructions_en | text | yes | | |
 | submission_type | string | no | | values: text\|image\|audio\|file (HW-02) |

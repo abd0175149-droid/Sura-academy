@@ -374,7 +374,7 @@ Constraints and indexes:
 | id | uuid | no | | PK (v7) |
 | lead_id | uuid | yes | leads.id | |
 | family_id | uuid | yes | families.id | |
-| title | string | no | | |
+| title | string | no | | PII (CRM text can name a child) |
 | body | text | yes | | PII |
 | assigned_to | uuid | no | users.id | |
 | due_at | timestamptz | no | | |

@@ -299,6 +299,8 @@ $cases = [
     // E8 free text is personal data unless stated otherwise.
     ['E8 free text needs PII or a no-PII reason', swap(LEDGER, "| held_on | date | yes | | |\n", "| held_on | date | yes | | |\n| cancel_note | text | yes | | |\n"), [], 1,
         'class_sessions.cancel_note: free text must be tagged PII or say no-PII: <why>'],
+    ['E8 no-PII needs a stated reason', swap(LEDGER, "| held_on | date | yes | | |\n", "| held_on | date | yes | | |\n| cancel_note | text | yes | | no-PII: |\n"), [], 1,
+        'class_sessions.cancel_note: free text must be tagged PII or say no-PII: <why>'],
     ['E8 no-PII reason passes', swap(LEDGER, "| held_on | date | yes | | |\n", "| held_on | date | yes | | |\n| cancel_note | text | yes | | no-PII: chosen from a fixed list |\n"), [], 0,
         'erd OK'],
 

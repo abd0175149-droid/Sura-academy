@@ -5,7 +5,13 @@
 - **الرصيد:** مجموع `qty` للطالب والوعاء، يُحسب من الدفتر دائماً. اللقطات كاش يُعاد بناؤه بالجمع الكامل، ومهمة يومية تقارنها بالدفتر.
 - **التصحيح:** قيد `REVERSAL` يشير إلى الأصل، ثم القيد الصحيح. لا تعديل ولا حذف، ومحفّز في قاعدة البيانات يرفضهما. إعادة قيد سبق عكسه تكون بعكس قيد العكس نفسه، فتبقى سلسلة كل قيد خطاً واحداً.
 - **متى يُكتب القيد:** مرة واحدة عند إقفال الحضور، بعد تأكيد المعلمة أو الاعتماد الآلي (ATT-01، ATT-05). التغيير قبل الإقفال لا يمس الدفتر. ويؤكد ذلك WP-2.3.
-- **دفعة الرصيد:** صف مصدر تُكتب حقائقه مرة واحدة: المبلغ المدفوع، والكمية، والتواريخ، والتوزيع الذي موّلها. التجميد يُسجَّل صفوفاً في `credit_lot_extensions` ولا يُعدِّل الدفعة. وما بقي فيها مجموع قيودها في الدفتر.
+- **دفعة الرصيد:** مشتقة كما في D-05 وADR-007 §5. كل حقائقها تُعاد من مصادرها:
+  - الكمية وتاريخ البدء من قيد الشراء.
+  - المبلغ من توزيع الدفعة.
+  - المدد من إصدار القاعدة.
+  - التمديد من صفوف `credit_lot_extensions`.
+
+  تُكتب مرة واحدة، ولا يتغير فيها إلا كاش `expires_at`. وما بقي فيها مجموع قيودها في الدفتر.
 - **الأقفال:** كل كتابة على رصيد طالب تأخذ قفلاً على (`student_id`، `pool`) (`pg_advisory_xact_lock`) داخل المعاملة، فلا تستهلك جلستان متزامنتان آخر حصة مرتين.
 - **النصوص الحرة:** جداول الإضافة فقط هنا تحمل `reason_code`، والنص الحر في `record_notes` (Platform) القابل للمحو.
 
@@ -126,7 +132,7 @@ Constraints and indexes:
 - `UNIQUE (session_id, student_id) WHERE status <> 'rejected'`
 
 ### `credit_lots`
-- Kind: mutable · Spec: NEW (D-05; data-model-conventions.md) · Reqs: ATT-07, BIL-07, BIL-13, BIL-14 · Scope: family_id
+- Kind: derived · Spec: NEW (D-05; data-model-conventions.md) · Reqs: ATT-07, BIL-07, BIL-13, BIL-14 · Scope: family_id
 
 | Column | Type | Null | References | Notes |
 | --- | --- | --- | --- | --- |
@@ -143,7 +149,7 @@ Constraints and indexes:
 | effective_at | timestamptz | no | | payment success (D-05) |
 | cycle_end_at | timestamptz | no | | effective_at + `subscription.cycle_weeks` |
 | base_expires_at | timestamptz | no | | cycle_end_at + `credits.expiry_days_after_cycle` |
-| expires_at | timestamptz | no | | base_expires_at + the sum of `credit_lot_extensions`; cache rewritten only by the freeze action (trigger) |
+| expires_at | timestamptz | no | | cache of base_expires_at + Σ (`resumed_at − frozen_from_at`) of its `credit_lot_extensions`; recomputed by an AFTER INSERT trigger on the extensions, never set by the app |
 | rule_version_id | uuid | no | rule_versions.id | |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
@@ -151,10 +157,11 @@ Constraints and indexes:
 Constraints and indexes:
 - `UNIQUE (payment_allocation_id)`, `UNIQUE (subscription_id, cycle_no)`, `UNIQUE (id, student_id, pool)` (target of the ledger's composite FK)
 - `CHECK (pool = 'paid')`, `CHECK (qty_granted > 0)`, `CHECK (amount_paid_minor >= 0)`
-- Trigger: UPDATE may change `expires_at` and `updated_at` only; DELETE is rejected.
+- Trigger: UPDATE may change `expires_at` and `updated_at` only, and only to the recomputed value; DELETE is rejected.
+- Rebuildable: purchase entry (`qty`, `created_at`) + `payment_allocations.amount_minor` + `rule_versions.snapshot` + `credit_lot_extensions` (ADR-007 §5 note).
 - `INDEX (student_id, pool, expires_at)`: consumption takes the lot that expires first (FIFO by `expires_at`, D-05)
 - Remaining = Σ `qty` of ledger entries with this `lot_id`, the purchase included; a daily check compares it with `qty_granted` minus usage.
-- Wallet conversion (D-28) = `amount_paid_minor × remaining ÷ qty_granted`, rounded once at the end (rule fixed in WP-2.4), so the wallet never drifts from what was paid.
+- Wallet conversion (D-28) = `amount_paid_minor × remaining ÷ qty_granted`, rounded once at the end (rounding rule: D-40), so the wallet never drifts from what was paid.
 
 ### `credit_lot_extensions`
 - Kind: append-only · Spec: NEW (D-05 «يمدد expires_at … بمدة التجميد الفعلية»; ledger-auditor review) · Reqs: BIL-14 · Scope: via lot → family
@@ -196,19 +203,20 @@ Constraints and indexes:
 
 Constraints and indexes:
 - `UNIQUE (student_id, session_id, type) WHERE type IN ('CONSUMPTION_ATTENDANCE','ABSENCE_UNEXCUSED','EXTENSION_ABSENCE_EXCUSED','COMPENSATION_ACADEMY')`: the constitution's double-charge key for session entries (Art. 5 §2 «لقيود الحصص»). A REVERSAL keeps the original's `session_id` but is outside the key.
-- `UNIQUE (reverses_entry_id)`: an entry is reversed at most once. A post-lock edit that must reinstate an entry already reversed (A→B→A) posts a REVERSAL of that reversal; the chain stays linear, so the net per (student, session, type) is 0 or the original `qty`, and the effective type is the chain root.
+- `UNIQUE (reverses_entry_id)`: an entry is reversed at most once. A post-lock edit that must reinstate an entry already reversed (A→B→A) posts a REVERSAL of that reversal; the chain stays linear, so the net per (student, session, type) is 0 or the original `qty`, and the effective type is the chain root. A later edit always reverses the chain's **tip** (its latest entry), never the root again.
+- Reversing an entry whose credit was expired at once (an `expiry:<lot_id>:<that entry>` row exists) first reverses that expiry entry, in the same transaction and under the same advisory lock; otherwise the session would be charged twice.
 - `UNIQUE (idempotency_key)`; deterministic formats: `session:<session_id>:<student_id>:<type>`, `purchase:<payment_allocation_id>`, `trial:<trial_id>`, `expiry:<lot_id>:<source_entry_id>` (a credit returned to an already expired lot expires at once), `conversion:<lot_id>`, `reversal:<reverses_entry_id>`, `manual:<request uuid>` for ADJUSTMENT_MANUAL only.
 - `UNIQUE (lot_id) WHERE type = 'CREDIT_PURCHASE'`, `UNIQUE (lot_id) WHERE type = 'CONVERSION_TO_WALLET'`: one purchase and at most one wallet conversion per lot.
 - Composite FK `(lot_id, student_id, pool) → credit_lots (id, student_id, pool)`: an entry can only touch its own student's paid lot.
 - `CHECK (type NOT IN ('CREDIT_PURCHASE','CONVERSION_TO_WALLET') OR pool = 'paid')`, `CHECK (type <> 'CREDIT_TRIAL' OR pool = 'trial')`
-- `CHECK (pool <> 'paid' OR type NOT IN ('CREDIT_PURCHASE','CONSUMPTION_ATTENDANCE','ABSENCE_UNEXCUSED','CREDIT_EXPIRY','CONVERSION_TO_WALLET') OR lot_id IS NOT NULL)`
+- `CHECK (pool <> 'paid' OR lot_id IS NOT NULL)`: every paid-pool entry names its lot, so Σ lot remaining always equals the paid balance. COMPENSATION_ACADEMY uses the lot of the entry that charged the session; ADJUSTMENT_MANUAL −N takes the FIFO lot and +N the latest open lot; a REVERSAL copies the original's lot.
 - Sign: `CONSUMPTION_ATTENDANCE`, `ABSENCE_UNEXCUSED` = −1; `COMPENSATION_ACADEMY` = +1; `EXTENSION_ABSENCE_EXCUSED` = 0; `CREDIT_PURCHASE`, `CREDIT_TRIAL` > 0; `CREDIT_EXPIRY`, `CONVERSION_TO_WALLET` < 0; `ADJUSTMENT_MANUAL` ≠ 0.
 - `CHECK ((type = 'REVERSAL') = (reverses_entry_id IS NOT NULL))`; BEFORE INSERT trigger `validate_reversal()`: `qty = −original.qty` and the same `student_id`, `pool`, `lot_id`, `session_id` as the original.
 - `CHECK (type NOT IN ('ADJUSTMENT_MANUAL','REVERSAL','COMPENSATION_ACADEMY') OR reason_code IS NOT NULL)`, `CHECK (type <> 'ADJUSTMENT_MANUAL' OR (actor_type = 'user' AND actor_id IS NOT NULL))`
 - `CHECK (session_id IS NOT NULL OR type NOT IN ('CONSUMPTION_ATTENDANCE','ABSENCE_UNEXCUSED','EXTENSION_ABSENCE_EXCUSED','COMPENSATION_ACADEMY'))`
 - `INDEX (student_id, pool, created_at)`, `INDEX (session_id)`, `INDEX (lot_id)`
 - Trigger `forbid_mutation` rejects UPDATE and DELETE for every role; `sura_app` has neither privilege (data-model-conventions.md). Rows are never deleted, also not on an erasure request: the student id becomes opaque (D-14).
-- A daily reconciliation flags any (student, session) whose attendance-type sum is not 0 or −1.
+- A daily reconciliation flags any (student, session) with more than one live attendance-type chain (each REVERSAL counted under its chain root's type), and any student whose Σ lot remaining differs from the paid balance.
 
 ### `session_attendance`
 - Kind: mutable · Spec: session_attendance · Reqs: ATT-01, ATT-05, TCH-05, CLS-09, RPT-01, PAR-03, ADM-09 · Scope: via session → class; student_id → family
@@ -229,14 +237,14 @@ Constraints and indexes:
 | confirmed_at | timestamptz | yes | | |
 | auto_approved_at | timestamptz | yes | | suggestion approved after the window and flagged to the supervisor (spec/15) |
 | locked_at | timestamptz | yes | | the ledger entry is posted at lock; edits after it need permission + reason + REVERSAL (ATT-05) |
-| ledger_entry_id | uuid | yes | credit_ledger_entries.id | current effective root entry for this student and session |
+| ledger_entry_id | uuid | yes | credit_ledger_entries.id | tip of the current effective chain for this student and session (the latest live entry) |
 | rule_version_id | uuid | no | rule_versions.id | thresholds used for the suggestion |
 | created_at | timestamptz | no | | |
 | updated_at | timestamptz | no | | |
 
 Constraints and indexes:
 - `UNIQUE (session_id, student_id)`, `INDEX (student_id, session_id)`
-- A post-lock change runs under `SELECT … FOR UPDATE` on this row: it reverses `ledger_entry_id` first, posts the new entry, repoints the column and writes `audit_logs` with the reason, in one transaction.
+- A post-lock change runs under `SELECT … FOR UPDATE` on this row: it reverses the tip in `ledger_entry_id` (reinstating an earlier type means reversing its reversal, not posting it again), posts the new entry when the type changes, repoints the column to the new tip and writes `audit_logs` with the reason, in one transaction.
 
 ### `credit_balance_snapshots`
 - Kind: derived · Spec: credit_balance_snapshots · Reqs: ATT-07, PAR-01, PAR-07 · Scope: student_id → family

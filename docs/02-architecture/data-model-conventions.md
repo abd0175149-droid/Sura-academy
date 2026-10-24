@@ -51,8 +51,22 @@
 لكل منها:
 1. بلا `updated_at`.
 2. محفّز في PostgreSQL يرفض التعديل دائماً. الحذف نوعان (WP-0.7):
-   - **مطلق** (`forbid_mutation`): لا حذف لأي دور. الجداول: `credit_ledger_entries`، `wallet_entries`، `subscription_events`، `enrollment_history`، `setting_versions`، `rule_versions`، `credit_lot_extensions`، `safeguarding_incident_actions`.
-   - **حذف الاحتفاظ فقط** (`forbid_mutation_except_retention`): يُسمح بالحذف حين `current_user = 'sura_retention'` فقط، عبر دالة حذف لكل جدول لا تحذف إلا ما انقضت مدته أو ما شمله طلب محو. الجداول: `audit_logs`، `audit_log_personal_data`، `consents`، `cookie_consents`، `participant_events`، `delivery_logs`، `join_token_log`، `recording_access_log`، `session_chat_messages`.
+   - **مطلق** (`forbid_mutation`): لا حذف لأي دور. الجداول: `credit_ledger_entries`، `wallet_entries`، `subscription_events`، `enrollment_history`، `setting_versions`، `rule_versions`، `credit_lot_extensions`.
+   - **حذف الاحتفاظ فقط** (`forbid_mutation_except_retention`): يُسمح بالحذف حين `current_user = 'sura_retention'` فقط، عبر دالة حذف لكل جدول لا تحذف إلا ما انقضت مدته أو ما شمله طلب محو. الجداول: `audit_logs`، `audit_log_personal_data`، `consents`، `cookie_consents`، `participant_events`، `delivery_logs`، `join_token_log`، `recording_access_log`، `session_chat_messages`، `safeguarding_incident_actions` (بعد 7 سنوات من إغلاق البلاغ، D-15).
+
+   دالة الحذف لكل جدول `SECURITY INVOKER`، وصلاحية تنفيذها لـ `sura_retention` وحده، فيبقى `current_user` هو `sura_retention` ويقبله المحفّز:
+
+```sql
+CREATE OR REPLACE FUNCTION forbid_mutation_except_retention() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'DELETE' AND current_user = 'sura_retention' THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'append-only table %: % is forbidden', TG_TABLE_NAME, TG_OP
+    USING ERRCODE = 'insufficient_privilege';
+END $$ LANGUAGE plpgsql;
+```
+
 
    مثال الدالة المطلقة:
 
@@ -88,7 +102,7 @@ CREATE TRIGGER credit_ledger_entries_append_only
 
 ## فصل البيانات الشخصية (D-14)
 
-كل عمود نص حر (اسمه `reason`، `note(s)`، `details`، `comment`، `body`، `description`، `label` أو ينتهي بها) يُعامل بيانات شخصية: يُوسم `PII` ويُسجَّل، أو يذكر سبب عدم ذلك بـ `no-PII:`. والفاحص `scripts/check-erd.php` يفرضه. جداول الإضافة فقط تحمل `reason_code`، والنص الحر في `record_notes` القابل للمحو (WP-0.7).
+كل عمود نص حر (اسمه `reason`، `note(s)`، `details`، `comment`، `body`، `description`، `label`، `title`، `message`، `exception`، `error` أو ينتهي بها) يُعامل بيانات شخصية: يُوسم `PII` ويُسجَّل، أو يذكر سبب عدم ذلك بـ `no-PII:`. والفاحص `scripts/check-erd.php` يفرضه. جداول الإضافة فقط تحمل `reason_code`، والنص الحر في `record_notes` القابل للمحو. يُستثنى ما يُحذف صفه كله بدور الاحتفاظ أو يُحفظ بمدة D-15: `session_chat_messages.body`، `safeguarding_incident_actions.action_taken` (WP-0.7).
 
 
 البيانات الشخصية القابلة للمحو في أعمدة أو جداول معروفة مسجلة في `config/privacy.php`: أسماء أولياء الأمور، البريد، الهاتف، الاسم الأول للطفل، الملاحظات الحرة، الملفات المرفوعة. طلب الحذف يستبدلها باسم مستعار أو يمحوها، ويُبقي الصفوف المالية والرصيدية بمعرّفاتها.
